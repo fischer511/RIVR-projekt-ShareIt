@@ -53,11 +53,11 @@
 - Validacija vnosa
 
 #### Povezave med primeri uporabe
-- **<<include>>** povezave:
+- include povezave:
   - Prijava vključuje preverjanje obstoječega uporabnika
   - Pošiljanje prošnje za izposojo vključuje izbiro datuma
   - Dodajanje predmeta vključuje nalaganje slik, pridobivanje lokacije, validacijo obveznih polj
-- **<<extend>>** povezave:
+- extend povezave:
   - Upravljanje izposoj razširja pošiljanje prošnje za izposojo
   - Push obvestila razširjajo več primerov uporabe (npr. upravljanje izposoj, potrjevanje/zavračanje prošenj)
 - **Neposredne povezave**:
