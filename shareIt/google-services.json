@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "574476261534",
+    "project_id": "shareit-75a13",
+    "storage_bucket": "shareit-75a13.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:574476261534:android:0e5995a0ddedd92bb9038f",
+        "android_client_info": {
+          "package_name": "com.company.shareit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDifZbIWJfqzVMIzR0-8dBR04SWSUvQy-k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

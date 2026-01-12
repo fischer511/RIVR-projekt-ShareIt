@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "shareit-75a13"
+  },
+  "firestore": {
+    "rules": "firebase/firestore.rules"
+  }
+}

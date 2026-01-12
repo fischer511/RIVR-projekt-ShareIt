@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read/write only their own user document
+    match /users/{userId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Public items are readable by anyone. Writes require ownership and verified email.
+    match /items/{itemId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.token.email_verified == true &&
+        request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if request.auth != null && request.auth.token.email_verified == true &&
+        resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Bookings: only the renter (userUid) and item owner (ownerUid) can read/write.
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.userUid ||
+        request.auth.uid == resource.data.ownerUid
+      );
+
+      allow create: if request.auth != null && request.auth.token.email_verified == true &&
+        request.resource.data.userUid == request.auth.uid;
+
+      allow update, delete: if request.auth != null && request.auth.token.email_verified == true && (
+        request.auth.uid == resource.data.userUid ||
+        request.auth.uid == resource.data.ownerUid
+      );
+    }
+
+    // Default deny for everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
