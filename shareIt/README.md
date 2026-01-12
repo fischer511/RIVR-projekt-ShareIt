@@ -39,6 +39,51 @@ npx expo start -c
 
 Note: `.env` is gitignored; commit `.env.example`.
 
+## Post-clone setup
+
+1. Install dependencies
+
+   ```bash
+   cd shareIt
+   npm install
+   ```
+
+2. Create and fill environment file
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   - Open `.env` and provide the same values you use (or copy from Firebase Console → Project settings → General → Your apps → Web (</>) → Config).
+   - Ensure variable names match those used in code: `EXPO_PUBLIC_FIREBASE_API_KEY`, `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`, `EXPO_PUBLIC_FIREBASE_PROJECT_ID`, `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`, `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `EXPO_PUBLIC_FIREBASE_APP_ID`.
+
+3. Start the app
+
+   ```bash
+   npx expo start
+   ```
+
+   - Press `a` to open Android emulator, `w` for web, or scan the QR code with Expo Go.
+
+4. Optional: run native Android build
+
+   ```bash
+   npx expo run:android
+   ```
+
+   This compiles the native project instead of using Expo Go.
+
+5. Firebase Auth domains (if using Auth)
+
+   - In Firebase Console → Authentication → Settings → Authorized domains add: `localhost`, `127.0.0.1`, and any LAN host Expo shows.
+
+6. Troubleshooting
+
+   - If env variables don’t load, restart Metro and clear cache:
+     ```bash
+     npx expo start -c
+     ```
+
 ## Get a fresh project
 
 When you're ready, run:
