@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, Pressable, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, TextInput, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Radius } from '@src/constants/colors';
-import { FilterModal } from '@src/components/FilterModal';
-import { ItemCard } from '@src/components/ItemCard';
-import { items } from '@src/constants/mockData';
+import { Colors, Spacing, Radius } from '../constants/colors';
+import { FilterModal } from '../components/FilterModal';
+import { ItemCard } from '../components/ItemCard';
+import { Item } from '../models/Item';
+import { queryItems } from '../services/items';
+import { getUserLocation, calculateDistance, Coordinates } from '../services/location';
 
 const categoryOptions = ['all', 'tools', 'appliances', 'sports', 'gardening', 'diy'];
 
@@ -16,19 +17,71 @@ const HomeScreen: React.FC = () => {
   const [filterVisible, setFilterVisible] = useState(false);
   const [priceMin, setPriceMin] = useState<string>('');
   const [priceMax, setPriceMax] = useState<string>('');
-  const [distanceStep, setDistanceStep] = useState<number>(5);
+  const [distance, setDistance] = useState<number>(50);
 
-  const filtered = useMemo(() => {
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+
+  const fetchAllData = useCallback(async () => {
+    try {
+      const location = await getUserLocation();
+      setUserLocation(location);
+
+      const category = activeCategory === 'all' ? undefined : activeCategory;
+      const fetchedItems = await queryItems({ category });
+      setItems(fetchedItems);
+    } catch (error) {
+      console.error("Error initializing screen:", error);
+    }
+  }, [activeCategory]);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      await fetchAllData();
+      setLoading(false);
+    }
+    load();
+  }, [fetchAllData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchAllData();
+    setRefreshing(false);
+  }, [fetchAllData]);
+
+  const itemsWithDistance = useMemo(() => {
+    if (!userLocation) return items.map(item => ({ ...item, distanceKm: undefined }));
+
+    return items.map(item => {
+      const itemCoords = { latitude: item.location?.lat, longitude: item.location?.lng };
+      if (itemCoords.latitude && itemCoords.longitude) {
+        const dist = calculateDistance(userLocation, itemCoords as Coordinates);
+        return { ...item, distanceKm: dist };
+      }
+      return { ...item, distanceKm: undefined };
+    });
+  }, [items, userLocation]);
+
+  const filteredItems = useMemo(() => {
     const q = query.toLowerCase();
-    return items.filter((it) => {
-      const matchQuery = !q || it.title.toLowerCase().includes(q) || (it.city?.toLowerCase().includes(q) ?? false);
-      const matchCategory = activeCategory === 'all' || it.category === activeCategory;
+    
+    return itemsWithDistance.filter((it) => {
+      const matchQuery = !q || 
+        it.title.toLowerCase().includes(q) || 
+        (it.city && it.city.toLowerCase().includes(q));
+
       const matchPriceMin = !priceMin || it.pricePerDay >= Number(priceMin);
       const matchPriceMax = !priceMax || it.pricePerDay <= Number(priceMax);
-      const matchDistance = (it.distanceKm ?? 0) <= distanceStep * 5; // simple scaling for demo
-      return matchQuery && matchCategory && matchPriceMin && matchPriceMax && matchDistance;
+      
+      const matchDistance = it.distanceKm === undefined || it.distanceKm <= distance;
+
+      return matchQuery && matchPriceMin && matchPriceMax && matchDistance;
     });
-  }, [query, activeCategory, priceMin, priceMax, distanceStep]);
+  }, [query, itemsWithDistance, priceMin, priceMax, distance]);
+
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -38,7 +91,7 @@ const HomeScreen: React.FC = () => {
             style={styles.search}
             value={query}
             onChangeText={setQuery}
-            placeholder="Search items..."
+            placeholder="Search by keyword or city..."
             placeholderTextColor={Colors.gray}
           />
           <Pressable style={styles.filterBtn} onPress={() => setFilterVisible(true)}>
@@ -46,17 +99,22 @@ const HomeScreen: React.FC = () => {
           </Pressable>
         </View>
 
-        <View style={{ marginTop: 16 }}>
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 20 }} size="large" color={Colors.primary} />
+        ) : (
           <FlatList
-            data={filtered}
+            data={filteredItems}
             keyExtractor={(item) => item.id}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
             renderItem={({ item }) => (
               <ItemCard
                 title={item.title}
                 pricePerDay={item.pricePerDay}
-                distanceKm={item.distanceKm ?? 0}
-                city={item.city ?? ''}
-                imageUrl={item.photos[0] ?? ''}
+                distanceKm={item.distanceKm}
+                city={item.city}
+                imageUrl={item.images[0]}
                 onPress={() => router.push(`/item/${item.id}`)}
               />
             )}
@@ -66,8 +124,9 @@ const HomeScreen: React.FC = () => {
               </View>
             )}
             contentContainerStyle={{ paddingBottom: 24 }}
+            style={{ marginTop: 16 }}
           />
-        </View>
+        )}
       </View>
 
       <FilterModal
@@ -79,12 +138,16 @@ const HomeScreen: React.FC = () => {
         priceMax={priceMax}
         onChangePriceMin={setPriceMin}
         onChangePriceMax={setPriceMax}
-        distanceStep={distanceStep}
-        onIncreaseDistance={() => setDistanceStep((d) => d + 1)}
-        onDecreaseDistance={() => setDistanceStep((d) => Math.max(1, d - 1))}
-        onReset={() => { setActiveCategory('all'); setPriceMin(''); setPriceMax(''); setDistanceStep(5); }}
+        distance={distance}
+        onChangeDistance={setDistance}
         onApply={() => setFilterVisible(false)}
         onClose={() => setFilterVisible(false)}
+        onReset={() => { 
+          setActiveCategory('all'); 
+          setPriceMin(''); 
+          setPriceMax('');
+          setDistance(50);
+        }}
       />
     </SafeAreaView>
   );
