@@ -19,7 +19,7 @@ service cloud.firestore {
         && request.resource.data.description is string
         && request.resource.data.category is string
         && request.resource.data.pricePerDay is number
-        && request.resource.data.photos is list;
+        && request.resource.data.images is list;
 
       // Update/delete: only owner can modify
       allow update, delete: if request.auth != null
