@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+// @ts-ignore - getReactNativePersistence exists but TypeScript types are wrong
 import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
@@ -36,5 +37,6 @@ try {
 
 export const auth = _auth;
 export const db = getFirestore(firebaseApp);
+export const firestore = db; // alias za kompatibilnost
 export const storage = getStorage(firebaseApp);
 

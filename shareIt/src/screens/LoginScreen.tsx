@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { loginUser } from '../services/auth';
 
 const LoginScreen: React.FC = () => {

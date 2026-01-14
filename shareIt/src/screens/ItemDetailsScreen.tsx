@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors, Radius, Spacing } from '../constants/colors';
 import { Item } from '../models/Item';
