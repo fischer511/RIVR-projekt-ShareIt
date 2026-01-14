@@ -8,10 +8,13 @@ export const items: Item[] = [
     distanceKm: 1.2,
     city: 'Ljubljana',
     category: 'tools',
-    images: [
+    photos: [
       'https://images.unsplash.com/photo-1567016575061-39b9b33e57a9?q=80&w=1080&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1553694127-c66d4bdb0b46?q=80&w=1080&auto=format&fit=crop',
     ],
+    ownerUid: 'mock-user-1',
+    createdAt: null,
+    location: null,
     description: 'Perfect for DIY, includes battery and charger.',
     availability: { fromDate: '2026-01-20', toDate: '2026-02-15' },
   },
@@ -22,10 +25,13 @@ export const items: Item[] = [
     distanceKm: 8.4,
     city: 'Kranj',
     category: 'sports',
-    images: [
+    photos: [
       'https://images.unsplash.com/photo-1518655048521-f130df041f66?q=80&w=1080&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?q=80&w=1080&auto=format&fit=crop',
     ],
+    ownerUid: 'mock-user-2',
+    createdAt: null,
+    location: null,
     description: 'Well-maintained bike, ideal for weekend rides.',
     availability: { fromDate: '2026-01-10', toDate: '2026-03-01' },
   },
@@ -36,10 +42,14 @@ export const items: Item[] = [
     distanceKm: 5.0,
     city: 'Domžale',
     category: 'appliances',
-    images: [
+    photos: [
       'https://images.unsplash.com/photo-1613498495643-6f6ee91d53d7?q=80&w=1080&auto=format&fit=crop',
     ],
     description: 'Great for patios and cars, hose included.',
+    ownerUid: 'mock-user-3',
+    createdAt: null,
+    location: null,
+    availability: null,
   },
 ];
 

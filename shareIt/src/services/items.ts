@@ -1,25 +1,17 @@
 import { auth } from './firebase';
 import { addDoc, collection, serverTimestamp, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { Item, ItemInput } from '../models';
 
-export type NewItemInput = {
-  title: string;
-  description: string;
-  category: string;
-  pricePerDay: number;
-  availabilityFrom?: string; // YYYY-MM-DD
-  availabilityTo?: string;   // YYYY-MM-DD
-  city?: string;
-  location?: { lat?: number; lng?: number };
-  images?: string[]; // storage paths or urls
-};
-
-export async function createItem(input: NewItemInput) {
+/**
+ * Ustvari nov predmet v Firestore (items kolekcija).
+ * Vrne ID ustvarjenega dokumenta.
+ */
+export async function createItem(input: ItemInput): Promise<string> {
   const user = auth.currentUser;
   if (!user) throw new Error('auth/not-signed-in');
 
-  // Client-side check; rules also enforce verified email
-  if (!user.emailVerified) throw new Error('auth/email-not-verified');
+  // if (!user.emailVerified) throw new Error('auth/email-not-verified');
 
   const payload = {
     ownerUid: user.uid,
@@ -27,11 +19,12 @@ export async function createItem(input: NewItemInput) {
     description: input.description,
     category: input.category,
     pricePerDay: input.pricePerDay,
-    availabilityFrom: input.availabilityFrom ?? null,
-    availabilityTo: input.availabilityTo ?? null,
+    availability: input.availabilityFrom && input.availabilityTo
+      ? { fromDate: input.availabilityFrom, toDate: input.availabilityTo }
+      : null,
     city: input.city ?? null,
     location: input.location ?? null,
-    images: input.images ?? [],
+    photos: input.photos ?? [],
     createdAt: serverTimestamp(),
   };
 
@@ -39,13 +32,19 @@ export async function createItem(input: NewItemInput) {
   return ref.id;
 }
 
-export async function listItems() {
+/**
+ * Pridobi vse predmete (najnovejši najprej).
+ */
+export async function listItems(): Promise<Item[]> {
   const q = query(collection(db, 'items'), orderBy('createdAt', 'desc'));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Item));
 }
 
-export async function getItemById(id: string) {
+/**
+ * Pridobi posamezen predmet po ID-ju.
+ */
+export async function getItemById(id: string): Promise<Item | null> {
   const d = await getDoc(doc(db, 'items', id));
-  return d.exists() ? { id: d.id, ...(d.data() as any) } : null;
+  return d.exists() ? ({ id: d.id, ...d.data() } as Item) : null;
 }

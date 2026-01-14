@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { initializeAuth, getAuth } from 'firebase/auth';
-import AsyncStorage, { AsyncStorageStatic } from '@react-native-async-storage/async-storage';
+import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -37,8 +37,4 @@ try {
 export const auth = _auth;
 export const db = getFirestore(firebaseApp);
 export const storage = getStorage(firebaseApp);
-
-function getReactNativePersistence(AsyncStorage: AsyncStorageStatic): import("@firebase/auth").Persistence | import("@firebase/auth").Persistence[] | undefined {
-    throw new Error('Function not implemented.');
-}
 

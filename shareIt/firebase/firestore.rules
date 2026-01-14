@@ -8,13 +8,22 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Public items are readable by anyone. Writes require ownership and verified email.
+    // Public items are readable by anyone. Writes require ownership and required fields.
     match /items/{itemId} {
       allow read: if true;
-      allow create: if request.auth != null && request.auth.token.email_verified == true &&
-        request.resource.data.ownerUid == request.auth.uid;
-      allow update, delete: if request.auth != null && request.auth.token.email_verified == true &&
-        resource.data.ownerUid == request.auth.uid;
+
+      // Create: user must be signed in, ownerUid matches, and required fields present
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.description is string
+        && request.resource.data.category is string
+        && request.resource.data.pricePerDay is number
+        && request.resource.data.photos is list;
+
+      // Update/delete: only owner can modify
+      allow update, delete: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid;
     }
 
     // Bookings: only the renter (userUid) and item owner (ownerUid) can read/write.
@@ -24,10 +33,10 @@ service cloud.firestore {
         request.auth.uid == resource.data.ownerUid
       );
 
-      allow create: if request.auth != null && request.auth.token.email_verified == true &&
+      allow create: if request.auth != null &&
         request.resource.data.userUid == request.auth.uid;
 
-      allow update, delete: if request.auth != null && request.auth.token.email_verified == true && (
+      allow update, delete: if request.auth != null && (
         request.auth.uid == resource.data.userUid ||
         request.auth.uid == resource.data.ownerUid
       );

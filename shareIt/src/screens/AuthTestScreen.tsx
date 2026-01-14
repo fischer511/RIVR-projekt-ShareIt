@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable, Alert, SafeAreaView } from 'react-native';
+import { View, Text, Pressable, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@src/services/firebase';
 

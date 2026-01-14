@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Image, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Image, Alert, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, Radius } from '@src/constants/colors';
 import PrimaryButton from '@src/components/PrimaryButton';
 import SecondaryButton from '@src/components/SecondaryButton';
@@ -190,6 +191,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', gap: 8 },
   avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.grayLight },
   name: { fontSize: 18, fontWeight: '700', color: Colors.black },
+  meta: { fontSize: 12, color: Colors.grayDark },
   card: { backgroundColor: Colors.white, padding: Spacing.md, borderRadius: Radius.md, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
   input: { borderWidth: 1, borderColor: Colors.grayLight, borderRadius: Radius.sm, paddingHorizontal: Spacing.sm, paddingVertical: 10, marginTop: Spacing.sm },
 });

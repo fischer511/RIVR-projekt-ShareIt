@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, Image, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, Pressable, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors, Radius, Spacing } from '@src/constants/colors';
 import { items } from '@src/constants/mockData';
@@ -26,7 +27,7 @@ const ItemDetailsScreen: React.FC = () => {
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
         <FlatList
-          data={item.images}
+          data={item.photos}
           keyExtractor={(u, idx) => `${u}-${idx}`}
           horizontal
           pagingEnabled
@@ -38,7 +39,7 @@ const ItemDetailsScreen: React.FC = () => {
         />
         <View style={styles.info}>
           <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.meta}>{item.category} • €{item.pricePerDay}/day • {item.distanceKm.toFixed(1)} km • {item.city}</Text>
+          <Text style={styles.meta}>{item.category} • €{item.pricePerDay}/day • {(item.distanceKm ?? 0).toFixed(1)} km • {item.city ?? ''}</Text>
           <Text style={styles.desc}>{item.description}</Text>
           {item.availability && (
             <Text style={styles.avail}>Available: {item.availability.fromDate} → {item.availability.toDate}</Text>

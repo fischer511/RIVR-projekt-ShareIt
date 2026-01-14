@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TextInput, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, Pressable, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, Radius } from '@src/constants/colors';
 import { FilterModal } from '@src/components/FilterModal';
@@ -20,11 +21,11 @@ const HomeScreen: React.FC = () => {
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return items.filter((it) => {
-      const matchQuery = !q || it.title.toLowerCase().includes(q) || it.city.toLowerCase().includes(q);
+      const matchQuery = !q || it.title.toLowerCase().includes(q) || (it.city?.toLowerCase().includes(q) ?? false);
       const matchCategory = activeCategory === 'all' || it.category === activeCategory;
       const matchPriceMin = !priceMin || it.pricePerDay >= Number(priceMin);
       const matchPriceMax = !priceMax || it.pricePerDay <= Number(priceMax);
-      const matchDistance = it.distanceKm <= distanceStep * 5; // simple scaling for demo
+      const matchDistance = (it.distanceKm ?? 0) <= distanceStep * 5; // simple scaling for demo
       return matchQuery && matchCategory && matchPriceMin && matchPriceMax && matchDistance;
     });
   }, [query, activeCategory, priceMin, priceMax, distanceStep]);
@@ -53,9 +54,9 @@ const HomeScreen: React.FC = () => {
               <ItemCard
                 title={item.title}
                 pricePerDay={item.pricePerDay}
-                distanceKm={item.distanceKm}
-                city={item.city}
-                imageUrl={item.images[0]}
+                distanceKm={item.distanceKm ?? 0}
+                city={item.city ?? ''}
+                imageUrl={item.photos[0] ?? ''}
                 onPress={() => router.push(`/item/${item.id}`)}
               />
             )}
