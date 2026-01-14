@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Alert } from 'react-native';
-import { Colors, Spacing } from '@src/constants/colors';
-import FormField from '@src/components/FormField';
-import PrimaryButton from '@src/components/PrimaryButton';
-import SecondaryButton from '@src/components/SecondaryButton';
-import { createItem } from '@src/services/items';
+import { View, Text, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
+import { Colors, Spacing } from '../constants/colors';
+import FormField from '../components/FormField';
+import PrimaryButton from '../components/PrimaryButton';
+import SecondaryButton from '../components/SecondaryButton';
+import { createItem } from '../services/items';
+import { getUserLocation, getCityFromCoordinates, Coordinates } from '../services/location';
 
 const AddItemScreen: React.FC = () => {
   const [title, setTitle] = useState('');
@@ -14,11 +15,33 @@ const AddItemScreen: React.FC = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [city, setCity] = useState('');
-  const [gps, setGps] = useState<{ lat?: number; lng?: number }>({});
+  const [gps, setGps] = useState<Coordinates | null>(null);
   const [errors, setErrors] = useState<{ [k: string]: string }>({});
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   const mockAddImage = () => Alert.alert('Image', 'Add image (mock)');
-  const useGps = () => { setGps({ lat: 46.0569, lng: 14.5058 }); setCity('Ljubljana'); };
+
+  const handleUseGps = async () => {
+    setIsGettingLocation(true);
+    try {
+      const location = await getUserLocation();
+      if (location) {
+        setGps(location);
+        const cityName = await getCityFromCoordinates(location);
+        if (cityName) {
+          setCity(cityName);
+        }
+        Alert.alert('Success', 'GPS location and city have been set.');
+      } else {
+        Alert.alert('Error', 'Could not get location. Please make sure you have granted permission.');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An unexpected error occurred while fetching location.');
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
 
   const submit = async () => {
     const e: { [k: string]: string } = {};
@@ -26,6 +49,7 @@ const AddItemScreen: React.FC = () => {
     if (!description) e.description = 'Required';
     if (!category) e.category = 'Required';
     if (!price || isNaN(Number(price))) e.price = 'Required numeric';
+    if (!city) e.city = 'Required';
     setErrors(e);
     if (Object.keys(e).length) return;
     try {
@@ -36,11 +60,11 @@ const AddItemScreen: React.FC = () => {
         pricePerDay: Number(price),
         availabilityFrom: fromDate || undefined,
         availabilityTo: toDate || undefined,
-        city: city || undefined,
-        location: gps,
+        city: city,
+        location: gps ? { lat: gps.latitude, lng: gps.longitude } : undefined,
       });
       Alert.alert('Item published', `ID: ${id}`);
-      setTitle(''); setDescription(''); setCategory(''); setPrice(''); setFromDate(''); setToDate(''); setCity(''); setGps({});
+      setTitle(''); setDescription(''); setCategory(''); setPrice(''); setFromDate(''); setToDate(''); setCity(''); setGps(null);
     } catch (err: any) {
       console.error(err?.message ?? err);
       if (String(err?.message).includes('email-not-verified')) {
@@ -71,11 +95,12 @@ const AddItemScreen: React.FC = () => {
         </View>
 
         <Text style={styles.section}>Location</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <PrimaryButton title="Use GPS" onPress={useGps} />
-          <FormField label="City" value={city} onChangeText={setCity} />
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <PrimaryButton title="Use GPS" onPress={handleUseGps} disabled={isGettingLocation} />
+          {isGettingLocation && <ActivityIndicator />}
+          <FormField label="City" value={city} onChangeText={setCity} error={errors.city} />
         </View>
-        <Text style={styles.helper}>{gps.lat ? `GPS set: ${gps.lat.toFixed(4)}, ${gps.lng?.toFixed(4)}` : 'GPS not set'}</Text>
+        <Text style={styles.helper}>{gps ? `GPS set: ${gps.latitude.toFixed(4)}, ${gps.longitude?.toFixed(4)}` : 'GPS not set'}</Text>
 
         <PrimaryButton title="Publish" onPress={submit} style={{ marginTop: Spacing.md }} />
       </View>
