@@ -48,9 +48,19 @@ export const calculateDistance = (coord1: Coordinates, coord2: Coordinates): num
 export const getCityFromCoordinates = async (coords: Coordinates): Promise<string | null> => {
   try {
     const [address] = await Location.reverseGeocodeAsync(coords);
-    return address?.city || null;
+    const city = address?.city || address?.subregion || address?.region || address?.district;
+    if (city) return city;
   } catch (error) {
     console.error("Reverse geocoding failed", error);
+  }
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords.latitude}&lon=${coords.longitude}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const addr = data?.address || {};
+    return addr.city || addr.town || addr.village || addr.municipality || null;
+  } catch (error) {
+    console.error("Nominatim reverse geocoding failed", error);
     return null;
   }
 };

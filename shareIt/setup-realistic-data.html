@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Setup Realistic Data - ShareIt</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+    button { padding: 20px 40px; font-size: 18px; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; margin: 10px 0; }
+    button:hover { background: #45a049; }
+    #status { margin-top: 20px; font-size: 16px; line-height: 1.6; }
+    .success { color: green; font-weight: bold; }
+    .error { color: red; font-weight: bold; }
+    .info { color: blue; }
+  </style>
+</head>
+<body>
+  <h1>🎯 Setup ShareIt Database</h1>
+  <p>Ta skripta bo:</p>
+  <ul>
+    <li>Izbrisala vse stare testne podatke (demo-user-1, demo-user-2, demo-user-3)</li>
+    <li>Ustvarila 3 realistične uporabnike</li>
+    <li>Dodala 8 realističnih oglasov</li>
+  </ul>
+  
+  <button id="setupBtn">🚀 Setup Database</button>
+  <div id="status"></div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, query, where, getDocs, deleteDoc, doc, setDoc, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDrZh3Wc8CXALWaJLx54qjD4r_4E2L3mzw",
+      authDomain: "shareit-75a13.firebaseapp.com",
+      projectId: "shareit-75a13",
+      storageBucket: "shareit-75a13.firebasestorage.app",
+      messagingSenderId: "574476261534",
+      appId: "1:574476261534:web:566f3aa94edf176fb9038f"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    function log(message, type = 'info') {
+      const statusDiv = document.getElementById('status');
+      const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+      statusDiv.innerHTML += `<div class="${className}">${message}</div>`;
+      console.log(message);
+    }
+
+    document.getElementById('setupBtn').addEventListener('click', async () => {
+      const statusDiv = document.getElementById('status');
+      statusDiv.innerHTML = '';
+      
+      try {
+        // Step 1: Delete ALL old items
+        log('🗑️ Deleting ALL old items...', 'info');
+        const itemsRef = collection(db, 'items');
+        const allItemsSnapshot = await getDocs(itemsRef);
+        
+        let deletedCount = 0;
+        for (const docSnap of allItemsSnapshot.docs) {
+          await deleteDoc(doc(db, 'items', docSnap.id));
+          deletedCount++;
+        }
+        log(`   Deleted ${deletedCount} items`, 'info');
+        log('✅ All old items deleted!', 'success');
+
+        // Step 2: Create realistic users
+        log('👥 Creating realistic users...', 'info');
+        const users = [
+          {
+            uid: 'user-marko-2024',
+            email: 'marko.novak@example.com',
+            name: 'Marko Novak',
+            city: 'Ljubljana',
+            location: { lat: 46.0569, lng: 14.5058 }
+          },
+          {
+            uid: 'user-ana-2024',
+            email: 'ana.kovac@example.com',
+            name: 'Ana Kovač',
+            city: 'Maribor',
+            location: { lat: 46.5547, lng: 15.6459 }
+          },
+          {
+            uid: 'user-peter-2024',
+            email: 'peter.horvat@example.com',
+            name: 'Peter Horvat',
+            city: 'Celje',
+            location: { lat: 46.2396, lng: 15.2675 }
+          }
+        ];
+
+        for (const user of users) {
+          await setDoc(doc(db, 'users', user.uid), {
+            email: user.email,
+            name: user.name,
+            city: user.city,
+            location: user.location,
+            createdAt: serverTimestamp()
+          });
+          log(`   Created user: ${user.name}`, 'info');
+        }
+        log('✅ Users created!', 'success');
+
+        // Step 3: Create realistic items
+        log('📦 Creating realistic items...', 'info');
+        const items = [
+          {
+            title: "Bosch Professional vrtalnik GSR 18V-21",
+            description: "Akumulatorski vrtalnik, 2 bateriji 18V/2.0Ah, polnilec in kovček. Idealen za vrtanje in vijačenje. Odlično stanje, malokrat uporabljen.",
+            category: "Orodje",
+            pricePerDay: 12,
+            city: "Ljubljana",
+            location: { lat: 46.0569, lng: 14.5058 },
+            images: ["https://picsum.photos/seed/drill/800/600"],
+            status: "available",
+            ownerUid: 'user-marko-2024'
+          },
+          {
+            title: "Električna verižna žaga Stihl MSE 170",
+            description: "Zmogljiva električna žaga za rezanje drv in obrezovanje. Dolžina meča 35cm. Zelo dobro vzdrževana, pripravljena za uporabo.",
+            category: "Orodje",
+            pricePerDay: 15,
+            city: "Ljubljana",
+            location: { lat: 46.0511, lng: 14.5051 },
+            images: ["https://picsum.photos/seed/chainsaw/800/600"],
+            status: "available",
+            ownerUid: 'user-marko-2024'
+          },
+          {
+            title: "Aluminijasta teleskopska lestev 5m",
+            description: "Lahka in stabilna lestev, nosilnost do 150kg. Nastavljiva višina. Popolna za delo na višini - čiščenje oken, pleskanje, popravila.",
+            category: "Orodje",
+            pricePerDay: 8,
+            city: "Maribor",
+            location: { lat: 46.5547, lng: 15.6459 },
+            images: ["https://picsum.photos/seed/ladder/800/600"],
+            status: "available",
+            ownerUid: 'user-ana-2024'
+          },
+          {
+            title: "Družinski kamp šotor za 4 osebe",
+            description: "Quechua šotor 2 Seconds, avtomatsko odpiranje. Vodoodporen, z moskitiero. Vključen transportni kovček. Odličen za izlete in festivale.",
+            category: "Šport",
+            pricePerDay: 18,
+            city: "Ljubljana",
+            location: { lat: 46.0489, lng: 14.5065 },
+            images: ["https://picsum.photos/seed/tent/800/600"],
+            status: "available",
+            ownerUid: 'user-marko-2024'
+          },
+          {
+            title: "Otroško kolo 20 col (6-9 let)",
+            description: "Modro gorsko kolo z menjalniki. Nastavljiva višina sedeža, dobra kolesa. Popolno za prvega kolesarja!",
+            category: "Šport",
+            pricePerDay: 5,
+            city: "Celje",
+            location: { lat: 46.2396, lng: 15.2675 },
+            images: ["https://picsum.photos/seed/bicycle/800/600"],
+            status: "available",
+            ownerUid: 'user-peter-2024'
+          },
+          {
+            title: "Full HD projektor BenQ + platno 2m",
+            description: "Projektor 1080p s 3000 ANSI lumens, vključeno prenosno projekcijsko platno. Idealno za filmske večere, predstavitve ali praznovanja.",
+            category: "Elektronika",
+            pricePerDay: 25,
+            city: "Ljubljana",
+            location: { lat: 46.0568, lng: 14.5078 },
+            images: ["https://picsum.photos/seed/projector/800/600"],
+            status: "available",
+            ownerUid: 'user-marko-2024'
+          },
+          {
+            title: "Canon EOS 2000D + 2 objektiva",
+            description: "DSLR kamera 24MP, objektiva 18-55mm in 50mm f/1.8. Torba, polnilec, 2 bateriji, 32GB SD kartica. Popolna za začetnike v fotografiji.",
+            category: "Elektronika",
+            pricePerDay: 35,
+            city: "Maribor",
+            location: { lat: 46.5577, lng: 15.6455 },
+            images: ["https://picsum.photos/seed/camera/800/600"],
+            status: "available",
+            ownerUid: 'user-ana-2024'
+          },
+          {
+            title: "KitchenAid planetarni mešalnik 4.8L",
+            description: "Profesionalni kuhinjski robot z nastavki za mešanje, stepanje in gnetenje. 10 hitrosti. Idealen za peko tort, kruha in sladic.",
+            category: "Kuhinja",
+            pricePerDay: 10,
+            city: "Kranj",
+            location: { lat: 46.2389, lng: 14.3555 },
+            images: ["https://picsum.photos/seed/mixer/800/600"],
+            status: "available",
+            ownerUid: 'user-peter-2024'
+          }
+        ];
+
+        for (const item of items) {
+          await addDoc(collection(db, 'items'), {
+            ...item,
+            createdAt: serverTimestamp()
+          });
+          log(`   Added: ${item.title}`, 'info');
+        }
+        log('✅ Items created!', 'success');
+
+        log('', 'info');
+        log('🎉 SUCCESS! Database is ready!', 'success');
+        log('', 'info');
+        log('Created users:', 'info');
+        log('  • Marko Novak (marko.novak@example.com) - 4 items', 'info');
+        log('  • Ana Kovač (ana.kovac@example.com) - 2 items', 'info');
+        log('  • Peter Horvat (peter.horvat@example.com) - 2 items', 'info');
+        log('', 'info');
+        log('You can now close this page and refresh the app!', 'success');
+
+      } catch (error) {
+        console.error('Error:', error);
+        log(`❌ Error: ${error.message}`, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -8,7 +8,7 @@ type Props = {
   placeholder?: string;
 };
 
-export const SearchBar: React.FC<Props> = ({ value, onChangeText, placeholder = 'Search...' }) => {
+export const SearchBar: React.FC<Props> = ({ value, onChangeText, placeholder = 'Išči...' }) => {
   return (
     <View style={styles.container}>
       <IconSymbol name="magnifyingglass" size={18} color="#888" />

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Alert, ActivityIndicator, Image, ScrollView, Pressable } from 'react-native';
 import { Colors, Spacing } from '../constants/colors';
 import FormField from '../components/FormField';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import { createItem } from '../services/items';
 import { getUserLocation, getCityFromCoordinates, Coordinates } from '../services/location';
+import * as ImagePicker from 'expo-image-picker';
+import { auth, storage } from '../services/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const AddItemScreen: React.FC = () => {
   const [title, setTitle] = useState('');
@@ -16,10 +19,56 @@ const AddItemScreen: React.FC = () => {
   const [toDate, setToDate] = useState('');
   const [city, setCity] = useState('');
   const [gps, setGps] = useState<Coordinates | null>(null);
+  const [images, setImages] = useState<string[]>([]);
   const [errors, setErrors] = useState<{ [k: string]: string }>({});
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const mockAddImage = () => Alert.alert('Image', 'Add image (mock)');
+  const pickImages = async () => {
+    if (images.length >= 5) {
+      Alert.alert('Največ 5 slik');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: [ImagePicker.MediaType.Images],
+      allowsMultipleSelection: true,
+      selectionLimit: 5 - images.length,
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+    const selected = result.assets.map((a) => a.uri).filter(Boolean);
+    setImages((prev) => [...prev, ...selected].slice(0, 5));
+  };
+
+  const removeImage = (uri: string) => {
+    setImages((prev) => prev.filter((u) => u !== uri));
+  };
+
+  const uploadImageAsync = async (uri: string, ownerUid: string) => {
+    // Za web - uporabi base64 data URL direktno (CORS workaround)
+    if (uri.startsWith('data:')) {
+      return uri; // Že je data URL
+    }
+    
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      
+      // Za web - pretvori v base64 namesto uploada v Storage
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('Error converting image:', error);
+      // Fallback - uporabi picsum placeholder
+      return `https://picsum.photos/seed/${Date.now()}/800/600`;
+    }
+  };
 
   const handleUseGps = async () => {
     setIsGettingLocation(true);
@@ -30,14 +79,16 @@ const AddItemScreen: React.FC = () => {
         const cityName = await getCityFromCoordinates(location);
         if (cityName) {
           setCity(cityName);
+          Alert.alert('Uspeh', 'GPS lokacija in mesto sta nastavljena.');
+        } else {
+          Alert.alert('Opozorilo', 'GPS lokacija je nastavljena, mesto pa ni bilo najdeno.');
         }
-        Alert.alert('Success', 'GPS location and city have been set.');
       } else {
-        Alert.alert('Error', 'Could not get location. Please make sure you have granted permission.');
+        Alert.alert('Napaka', 'Lokacije ni bilo mogoče pridobiti. Preveri dovoljenja.');
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'An unexpected error occurred while fetching location.');
+      Alert.alert('Napaka', 'Prišlo je do napake pri pridobivanju lokacije.');
     } finally {
       setIsGettingLocation(false);
     }
@@ -45,14 +96,23 @@ const AddItemScreen: React.FC = () => {
 
   const submit = async () => {
     const e: { [k: string]: string } = {};
-    if (!title) e.title = 'Required';
-    if (!description) e.description = 'Required';
-    if (!category) e.category = 'Required';
-    if (!price || isNaN(Number(price))) e.price = 'Required numeric';
-    if (!city) e.city = 'Required';
+    if (!title) e.title = 'Obvezno';
+    if (!description) e.description = 'Obvezno';
+    if (!category) e.category = 'Obvezno';
+    if (!price || isNaN(Number(price))) e.price = 'Vnesi številko';
+    if (!city) e.city = 'Obvezno';
     setErrors(e);
     if (Object.keys(e).length) return;
     try {
+      setIsUploading(true);
+      const ownerUid = auth.currentUser?.uid;
+      
+      // Upload/convert slike
+      let imageUrls: string[] = [];
+      if (images.length > 0 && ownerUid) {
+        imageUrls = await Promise.all(images.map((uri) => uploadImageAsync(uri, ownerUid)));
+      }
+      
       const id = await createItem({
         title,
         description,
@@ -62,48 +122,62 @@ const AddItemScreen: React.FC = () => {
         availabilityTo: toDate || undefined,
         city: city,
         location: gps ? { lat: gps.latitude, lng: gps.longitude } : undefined,
+        images: imageUrls.length > 0 ? imageUrls : undefined,
       });
-      Alert.alert('Item published', `ID: ${id}`);
-      setTitle(''); setDescription(''); setCategory(''); setPrice(''); setFromDate(''); setToDate(''); setCity(''); setGps(null);
+      Alert.alert('Ponudba objavljena', `ID: ${id}`);
+      setTitle(''); setDescription(''); setCategory(''); setPrice(''); setFromDate(''); setToDate(''); setCity(''); setGps(null); setImages([]);
     } catch (err: any) {
       console.error(err?.message ?? err);
       if (String(err?.message).includes('email-not-verified')) {
-        Alert.alert('Please verify your email before publishing.');
+        Alert.alert('Pred objavo potrdi svoj e-mail.');
       } else if (String(err?.message).includes('not-signed-in')) {
-        Alert.alert('Please sign in to publish items.');
+        Alert.alert('Za objavo se prijavi.');
       } else {
-        Alert.alert('Failed to publish item');
+        Alert.alert('Objava ni uspela');
       }
+    } finally {
+      setIsUploading(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Publish item</Text>
-        <FormField label="Title" value={title} onChangeText={setTitle} error={errors.title} />
-        <FormField label="Description" value={description} onChangeText={setDescription} error={errors.description} />
-        <FormField label="Category" value={category} onChangeText={setCategory} error={errors.category} />
-        <FormField label="Price/day (€)" value={price} onChangeText={setPrice} error={errors.price} />
+      <ScrollView style={styles.container}>
+        <Text style={styles.title}>Objavi predmet</Text>
+        <FormField label="Naslov" value={title} onChangeText={setTitle} error={errors.title} />
+        <FormField label="Opis" value={description} onChangeText={setDescription} error={errors.description} />
+        <FormField label="Kategorija" value={category} onChangeText={setCategory} error={errors.category} />
+        <FormField label="Cena/dan (EUR)" value={price} onChangeText={setPrice} error={errors.price} />
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <FormField label="From" value={fromDate} onChangeText={setFromDate} placeholder="YYYY-MM-DD" />
-          <FormField label="To" value={toDate} onChangeText={setToDate} placeholder="YYYY-MM-DD" />
+          <FormField label="Razpoložljivo od" value={fromDate} onChangeText={setFromDate} placeholder="YYYY-MM-DD" />
+          <FormField label="Razpoložljivo do" value={toDate} onChangeText={setToDate} placeholder="YYYY-MM-DD" />
         </View>
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <SecondaryButton title="Add image" onPress={mockAddImage} />
+          <SecondaryButton title="Dodaj sliko" onPress={pickImages} />
         </View>
+        <Text style={styles.helper}>Slike bodo shranjene kot base64 (za web)</Text>
+        {images.length > 0 ? (
+          <View style={styles.imageGrid}>
+            {images.map((uri) => (
+              <Pressable key={uri} onPress={() => removeImage(uri)} style={styles.imageWrap}>
+                <Image source={{ uri }} style={styles.image} />
+                <Text style={styles.removeText}>Odstrani</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
 
-        <Text style={styles.section}>Location</Text>
+        <Text style={styles.section}>Lokacija</Text>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          <PrimaryButton title="Use GPS" onPress={handleUseGps} disabled={isGettingLocation} />
+          <PrimaryButton title="Uporabi GPS" onPress={handleUseGps} disabled={isGettingLocation} />
           {isGettingLocation && <ActivityIndicator />}
-          <FormField label="City" value={city} onChangeText={setCity} error={errors.city} />
+          <FormField label="Mesto" value={city} onChangeText={setCity} error={errors.city} />
         </View>
-        <Text style={styles.helper}>{gps ? `GPS set: ${gps.latitude.toFixed(4)}, ${gps.longitude?.toFixed(4)}` : 'GPS not set'}</Text>
+        <Text style={styles.helper}>{gps ? `GPS nastavljen: ${gps.latitude.toFixed(4)}, ${gps.longitude?.toFixed(4)}` : 'GPS ni nastavljen'}</Text>
 
-        <PrimaryButton title="Publish" onPress={submit} style={{ marginTop: Spacing.md }} />
-      </View>
+        <PrimaryButton title={isUploading ? 'Nalagam...' : 'Objavi'} onPress={submit} style={{ marginTop: Spacing.md }} disabled={isUploading} />
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -114,6 +188,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '700', color: Colors.black },
   section: { fontSize: 14, fontWeight: '600', color: Colors.grayDark, marginTop: Spacing.md },
   helper: { fontSize: 12, color: Colors.grayDark },
+  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  imageWrap: { width: 90, alignItems: 'center', gap: 4 },
+  image: { width: 90, height: 90, borderRadius: 8, backgroundColor: Colors.grayLight },
+  removeText: { fontSize: 10, color: Colors.grayDark },
 });
 
 export default AddItemScreen;

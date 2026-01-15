@@ -20,16 +20,16 @@ const HistoryScreen: React.FC = () => {
 
   const updateStatus = (id: string, status: Booking['status']) => {
     setState((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
-    Alert.alert('Status updated (mock)');
+    Alert.alert('Status posodobljen (demo)');
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>History</Text>
-        <SegmentedTabs tabs={[{ key: 'renter', label: 'Renter' }, { key: 'owner', label: 'Owner' }]} activeKey={role} onChange={(k) => setRole(k as any)} />
+        <Text style={styles.title}>Zgodovina</Text>
+        <SegmentedTabs tabs={[{ key: 'renter', label: 'Najemnik' }, { key: 'owner', label: 'Lastnik' }]} activeKey={role} onChange={(k) => setRole(k as any)} />
         <View style={{ height: Spacing.sm }} />
-        <SegmentedTabs tabs={[{ key: 'All', label: 'All' }, { key: 'Active', label: 'Active' }, { key: 'Accepted', label: 'Accepted' }, { key: 'Completed', label: 'Completed' }]} activeKey={activeStatus} onChange={(k) => setActiveStatus(k as any)} />
+        <SegmentedTabs tabs={[{ key: 'All', label: 'Vse' }, { key: 'Active', label: 'Aktivno' }, { key: 'Accepted', label: 'Potrjeno' }, { key: 'Completed', label: 'Zaključeno' }]} activeKey={activeStatus} onChange={(k) => setActiveStatus(k as any)} />
 
         <FlatList
           data={filtered}
@@ -40,28 +40,28 @@ const HistoryScreen: React.FC = () => {
                 <Text style={styles.itemTitle}>{item.itemTitle}</Text>
                 <StatusChip status={item.status} />
               </View>
-              <Text style={styles.meta}>{item.fromDate} → {item.toDate}</Text>
+              <Text style={styles.meta}>{item.fromDate} - {item.toDate}</Text>
               <View style={styles.actions}>
                 {role === 'renter' ? (
                   <>
                     {(item.status === 'Pending' || item.status === 'Accepted') && (
-                      <Pressable style={[styles.btn, styles.cancel]} onPress={() => updateStatus(item.id, 'Cancelled')}><Text style={styles.btnText}>Cancel request</Text></Pressable>
+                      <Pressable style={[styles.btn, styles.cancel]} onPress={() => updateStatus(item.id, 'Cancelled')}><Text style={styles.btnText}>Prekliči</Text></Pressable>
                     )}
                     {item.status === 'Accepted' && (
-                      <Pressable style={[styles.btn, styles.return]} onPress={() => updateStatus(item.id, 'Returned')}><Text style={styles.btnText}>Mark returned</Text></Pressable>
+                      <Pressable style={[styles.btn, styles.return]} onPress={() => updateStatus(item.id, 'Returned')}><Text style={styles.btnText}>Označi kot vrnjeno</Text></Pressable>
                     )}
                   </>
                 ) : (
                   <>
                     {item.status === 'Accepted' && (
-                      <Pressable style={[styles.btn, styles.return]} onPress={() => updateStatus(item.id, 'Returned')}><Text style={styles.btnText}>Mark returned</Text></Pressable>
+                      <Pressable style={[styles.btn, styles.return]} onPress={() => updateStatus(item.id, 'Returned')}><Text style={styles.btnText}>Označi kot vrnjeno</Text></Pressable>
                     )}
                   </>
                 )}
               </View>
             </View>
           )}
-          ListEmptyComponent={() => <Text style={styles.empty}>No history items.</Text>}
+          ListEmptyComponent={() => <Text style={styles.empty}>Ni zgodovine.</Text>}
         />
       </View>
     </SafeAreaView>

@@ -15,23 +15,23 @@ const RequestBookingScreen: React.FC = () => {
 
   const submit = () => {
     const e: typeof errors = {};
-    if (!fromDate) e.fromDate = 'Required';
-    if (!toDate) e.toDate = 'Required';
+    if (!fromDate) e.fromDate = 'Obvezno';
+    if (!toDate) e.toDate = 'Obvezno';
     setErrors(e);
     if (Object.keys(e).length) return;
-    Alert.alert('Request sent (mock)');
+    Alert.alert('Prošnja poslana (demo)');
     router.back();
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>Request booking</Text>
-        <FormField label="From date" value={fromDate} onChangeText={setFromDate} placeholder="YYYY-MM-DD" error={errors.fromDate} />
-        <FormField label="To date" value={toDate} onChangeText={setToDate} placeholder="YYYY-MM-DD" error={errors.toDate} />
-        <FormField label="Message (optional)" value={message} onChangeText={setMessage} placeholder="Write a note to owner" />
+        <Text style={styles.title}>Prošnja za izposojo</Text>
+        <FormField label="Od" value={fromDate} onChangeText={setFromDate} placeholder="YYYY-MM-DD" error={errors.fromDate} />
+        <FormField label="Do" value={toDate} onChangeText={setToDate} placeholder="YYYY-MM-DD" error={errors.toDate} />
+        <FormField label="Sporočilo (neobvezno)" value={message} onChangeText={setMessage} placeholder="Napiši sporočilo" />
 
-        <PrimaryButton title="Submit" onPress={submit} style={{ marginTop: Spacing.md }} />
+        <PrimaryButton title="Pošlji" onPress={submit} style={{ marginTop: Spacing.md }} />
       </View>
     </SafeAreaView>
   );

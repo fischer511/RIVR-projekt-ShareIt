@@ -7,18 +7,14 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
-    const user = await loginUser(email, password);
-    if (user) {
-      // Po uspešni prijavi preusmerimo uporabnika na glavni zaslon.
-      // To bomo uredili v naslednjem koraku, ko bomo delali na navigaciji.
-    }
+    await loginUser(email, password);
   };
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={{ padding: 16 }}>
         <TextInput
-          placeholder="Email"
+          placeholder="E-mail"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -26,14 +22,14 @@ const LoginScreen: React.FC = () => {
           style={{ padding: 12, backgroundColor: '#eee', borderRadius: 8, marginBottom: 12 }}
         />
         <TextInput
-          placeholder="Password"
+          placeholder="Geslo"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
           style={{ padding: 12, backgroundColor: '#eee', borderRadius: 8, marginBottom: 12 }}
         />
         <Pressable onPress={handleLogin} style={{ padding: 12, backgroundColor: 'blue', borderRadius: 8 }}>
-          <Text style={{ color: 'white', textAlign: 'center' }}>Login</Text>
+          <Text style={{ color: 'white', textAlign: 'center' }}>Prijava</Text>
         </Pressable>
       </View>
     </SafeAreaView>

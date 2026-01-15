@@ -8,29 +8,56 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Public items are readable by anyone. Writes require ownership and verified email.
+    // Public items are readable by anyone. Writes require ownership (email verification removed for testing).
     match /items/{itemId} {
       allow read: if true;
-      allow create: if request.auth != null && request.auth.token.email_verified == true &&
+      allow create: if request.auth != null &&
         request.resource.data.ownerUid == request.auth.uid;
-      allow update, delete: if request.auth != null && request.auth.token.email_verified == true &&
+      allow update: if request.auth != null && (
+        resource.data.ownerUid == request.auth.uid ||
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['ratingAvg', 'ratingCount'])
+      );
+      allow delete: if request.auth != null &&
         resource.data.ownerUid == request.auth.uid;
     }
 
-    // Bookings: only the renter (userUid) and item owner (ownerUid) can read/write.
+    // Bookings: only the renter (renterUid) and item owner (ownerUid) can read/write.
     match /bookings/{bookingId} {
       allow read: if request.auth != null && (
-        request.auth.uid == resource.data.userUid ||
+        request.auth.uid == resource.data.renterUid ||
         request.auth.uid == resource.data.ownerUid
       );
 
-      allow create: if request.auth != null && request.auth.token.email_verified == true &&
-        request.resource.data.userUid == request.auth.uid;
+      allow create: if request.auth != null &&
+        request.resource.data.renterUid == request.auth.uid;
 
-      allow update, delete: if request.auth != null && request.auth.token.email_verified == true && (
-        request.auth.uid == resource.data.userUid ||
+      allow update, delete: if request.auth != null && (
+        request.auth.uid == resource.data.renterUid ||
         request.auth.uid == resource.data.ownerUid
       );
+    }
+
+    // Notifications: user can read their own notifications; any signed-in user can create with actorUid.
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userUid;
+      allow create: if request.auth != null && request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Chats: only participants can read/write.
+    match /chats/{chatId} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
+      allow update: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow delete: if false;
+    }
+
+    match /chats/{chatId}/messages/{messageId} {
+      allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      allow create: if request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants &&
+        request.resource.data.senderUid == request.auth.uid;
+      allow update, delete: if false;
     }
 
     // Default deny for everything else

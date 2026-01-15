@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fix Firestore Rules</title>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDrZh3Wc8CXALWaJLx54qjD4r_4E2L3mzw",
+      authDomain: "shareit-75a13.firebaseapp.com",
+      projectId: "shareit-75a13",
+      storageBucket: "shareit-75a13.firebasestorage.app",
+      messagingSenderId: "198906357963",
+      appId: "1:198906357963:web:ea2f6c29cf94ad15e9a464"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.testRules = async function() {
+      const status = document.getElementById('status');
+      status.innerHTML = 'Testing Firestore rules...';
+      
+      try {
+        // Poskusi dodati testni item - če uspe, so pravila OK
+        const testItem = {
+          title: 'Test Item',
+          description: 'Testing Firestore permissions',
+          category: 'Test',
+          pricePerDay: 1,
+          city: 'Test City',
+          ownerUid: 'test-user-id',
+          status: 'available',
+          createdAt: new Date(),
+        };
+        
+        const docRef = await addDoc(collection(db, 'items'), testItem);
+        status.innerHTML = `<div style="color: green; font-weight: bold;">✓ SUCCESS! Firestore rules are working correctly!</div>
+        <p>Test item created with ID: ${docRef.id}</p>
+        <p>You can now add items from your app.</p>`;
+      } catch (error) {
+        status.innerHTML = `<div style="color: red; font-weight: bold;">✗ FAILED: ${error.message}</div>
+        <p style="color: red;">Firestore rules still blocking writes. You MUST update rules in Firebase Console:</p>
+        <ol style="text-align: left;">
+          <li>Go to: <a href="https://console.firebase.google.com/project/shareit-75a13/firestore/rules" target="_blank">Firebase Console - Firestore Rules</a></li>
+          <li>Click in the editor (where the rules code is)</li>
+          <li>Press Ctrl+A (select all)</li>
+          <li>Press Delete</li>
+          <li>Copy the rules from the textarea below and paste them</li>
+          <li>Click "Publish"</li>
+        </ol>`;
+      }
+    };
+  </script>
+</head>
+<body style="font-family: Arial; padding: 20px; max-width: 900px; margin: 0 auto;">
+  <h1>Fix Firestore Rules</h1>
+  
+  <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 8px;">
+    <h3>⚠️ You MUST manually update Firestore Rules in Firebase Console</h3>
+    <p><strong>Firestore Rules cannot be updated from the web - you MUST do this in Firebase Console.</strong></p>
+  </div>
+
+  <h2>Steps to Fix:</h2>
+  <ol style="line-height: 2;">
+    <li><strong>Open Firebase Console:</strong> <a href="https://console.firebase.google.com/project/shareit-75a13/firestore/rules" target="_blank" style="font-size: 18px; color: #007bff;">Click here to open Firestore Rules</a></li>
+    <li><strong>Select all existing rules:</strong> Click in the rules editor, then press <kbd>Ctrl+A</kbd></li>
+    <li><strong>Delete all:</strong> Press <kbd>Delete</kbd> or <kbd>Backspace</kbd></li>
+    <li><strong>Copy new rules:</strong> Click the button below to copy</li>
+    <li><strong>Paste in Firebase Console:</strong> Press <kbd>Ctrl+V</kbd> in the rules editor</li>
+    <li><strong>Publish:</strong> Click the blue <strong>"Publish"</strong> button</li>
+    <li><strong>Test:</strong> Come back here and click "Test Rules" below</li>
+  </ol>
+
+  <h3>New Rules (Copy these):</h3>
+  <textarea id="rules" readonly style="width: 100%; height: 500px; font-family: monospace; font-size: 12px; padding: 10px; border: 2px solid #ccc; border-radius: 4px;">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /items/{itemId} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.resource.data.ownerUid == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.ownerUid == request.auth.uid ||
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['ratingAvg', 'ratingCount'])
+      );
+      allow delete: if request.auth != null &&
+        resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.renterUid ||
+        request.auth.uid == resource.data.ownerUid
+      );
+      allow create: if request.auth != null &&
+        request.resource.data.renterUid == request.auth.uid;
+      allow update, delete: if request.auth != null && (
+        request.auth.uid == resource.data.renterUid ||
+        request.auth.uid == resource.data.ownerUid
+      );
+    }
+
+    match /chats/{chatId} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
+      allow update: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow delete: if false;
+    }
+
+    match /chats/{chatId}/messages/{messageId} {
+      allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      allow create: if request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants &&
+        request.resource.data.senderUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}</textarea>
+
+  <button onclick="navigator.clipboard.writeText(document.getElementById('rules').value); document.getElementById('copyStatus').textContent = '✓ Copied!';" 
+          style="background: #28a745; color: white; border: none; padding: 15px 30px; font-size: 16px; border-radius: 5px; cursor: pointer; margin: 10px 0;">
+    📋 Copy Rules to Clipboard
+  </button>
+  <span id="copyStatus" style="margin-left: 10px; color: green; font-weight: bold;"></span>
+
+  <hr style="margin: 30px 0;">
+
+  <h3>After you've published the rules, test them:</h3>
+  <button onclick="testRules()" 
+          style="background: #007bff; color: white; border: none; padding: 15px 30px; font-size: 16px; border-radius: 5px; cursor: pointer;">
+    🧪 Test Rules
+  </button>
+
+  <div id="status" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; min-height: 50px;"></div>
+</body>
+</html>

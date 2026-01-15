@@ -8,5 +8,10 @@ export interface Item {
   location?: { lat?: number; lng?: number };
   images: string[];
   ownerUid: string;
+  status: string; // 'available', 'booked', 'unavailable'
   createdAt: any; // Firestore Timestamp
+  availabilityFrom?: string | null;
+  availabilityTo?: string | null;
+  ratingAvg?: number;
+  ratingCount?: number;
 }

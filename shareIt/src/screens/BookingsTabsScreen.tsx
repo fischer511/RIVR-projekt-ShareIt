@@ -1,62 +1,141 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, Pressable, Alert } from 'react-native';
 import { Colors, Spacing, Radius } from '@src/constants/colors';
-import { bookings } from '@src/constants/mockData';
-import { Booking } from '@src/models';
 import StatusChip from '@src/components/StatusChip';
 import SegmentedTabs from '@src/components/SegmentedTabs';
+import { auth } from '@src/services/firebase';
+import { Booking, autoCancelExpiredBookings, getOwnerBookingRequests, getUserBookings, updateBookingStatus } from '@src/services/bookings';
+import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 
 const BookingsTabsScreen: React.FC = () => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'renter' | 'owner'>('renter');
-  const [state, setState] = useState<Booking[]>(bookings);
+  const [renterBookings, setRenterBookings] = useState<Booking[]>([]);
+  const [ownerBookings, setOwnerBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = useMemo(() => state.filter((b) => (activeTab === 'renter' ? b.role === 'renter' : b.role === 'owner')), [state, activeTab]);
+  const fetchData = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
 
-  const updateStatus = (id: string, status: Booking['status']) => {
-    setState((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
-    Alert.alert('Status updated (mock)');
+    try {
+      setLoading(true);
+      await autoCancelExpiredBookings({ renterUid: currentUser.uid, ownerUid: currentUser.uid });
+      const [renterData, ownerData] = await Promise.all([
+        getUserBookings(currentUser.uid),
+        getOwnerBookingRequests(currentUser.uid),
+      ]);
+      setRenterBookings(renterData);
+      setOwnerBookings(ownerData);
+    } catch (e: any) {
+      console.error(e?.message ?? e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
+
+  const filtered = useMemo(
+    () => (activeTab === 'renter' ? renterBookings : ownerBookings),
+    [activeTab, renterBookings, ownerBookings]
+  );
+
+  const getStatusText = (status: Booking['status']) => {
+    switch (status) {
+      case 'pending': return 'V obdelavi';
+      case 'confirmed': return 'Potrjeno';
+      case 'rejected': return 'Zavrnjeno';
+      case 'completed': return 'Zaključeno';
+      case 'cancelled': return 'Preklicano';
+      default: return status;
+    }
+  };
+
+  const updateStatus = async (id: string, status: Booking['status']) => {
+    try {
+      await updateBookingStatus(id, status, auth.currentUser?.uid);
+      fetchData();
+    } catch (e: any) {
+      console.error(e?.message ?? e);
+      Alert.alert('Failed to update booking');
+    }
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <SegmentedTabs tabs={[{ key: 'renter', label: 'My requests' }, { key: 'owner', label: 'Requests for my items' }]} activeKey={activeTab} onChange={(k) => setActiveTab(k as any)} />
-
-        <FlatList
-          data={filtered}
-          keyExtractor={(b) => b.id}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.title}>{item.itemTitle}</Text>
-                <StatusChip status={item.status} />
-              </View>
-              <Text style={styles.meta}>{item.fromDate} → {item.toDate}</Text>
-              <View style={styles.actions}>
-                {activeTab === 'renter' ? (
-                  item.status === 'Pending' || item.status === 'Accepted' ? (
-                    <Pressable style={[styles.btn, styles.cancel]} onPress={() => updateStatus(item.id, 'Cancelled')}>
-                      <Text style={styles.btnText}>Cancel request</Text>
-                    </Pressable>
-                  ) : null
-                ) : (
-                  <>
-                    {item.status === 'Pending' && (
-                      <>
-                        <Pressable style={[styles.btn, styles.accept]} onPress={() => updateStatus(item.id, 'Accepted')}><Text style={styles.btnText}>Accept</Text></Pressable>
-                        <Pressable style={[styles.btn, styles.reject]} onPress={() => updateStatus(item.id, 'Rejected')}><Text style={styles.btnText}>Reject</Text></Pressable>
-                      </>
-                    )}
-                    {item.status === 'Accepted' && (
-                      <Pressable style={[styles.btn, styles.return]} onPress={() => updateStatus(item.id, 'Returned')}><Text style={styles.btnText}>Mark returned</Text></Pressable>
-                    )}
-                  </>
-                )}
-              </View>
-            </View>
-          )}
-          ListEmptyComponent={() => <Text style={styles.empty}>No bookings.</Text>}
+        <SegmentedTabs
+          tabs={[{ key: 'renter', label: 'Moje prošnje' }, { key: 'owner', label: 'Prošnje za moje predmete' }]}
+          activeKey={activeTab}
+          onChange={(k) => setActiveTab(k as any)}
         />
+
+        {loading ? (
+          <Text style={styles.empty}>Nalagam...</Text>
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={(b) => b.id as string}
+            renderItem={({ item }) => (
+              <View style={styles.card}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.title}>{item.itemTitle}</Text>
+                  <StatusChip status={item.status} label={getStatusText(item.status)} />
+                </View>
+                <Text style={styles.meta}>
+                  {new Date(item.dates[0]).toLocaleDateString()} - {new Date(item.dates[item.dates.length - 1]).toLocaleDateString()}
+                </Text>
+                <View style={styles.actions}>
+                <Pressable style={[styles.btn, styles.chat]} onPress={() => router.push(`/chat/${item.id}`)}>
+                    <Text style={styles.btnText}>Odpri klepet</Text>
+                  </Pressable>
+                  {activeTab === 'renter' ? (
+                    <>
+                      {item.status === 'pending' && (
+                        <Pressable style={[styles.btn, styles.cancel]} onPress={() => updateStatus(item.id as string, 'cancelled')}>
+                          <Text style={styles.btnText}>Prekliči prošnjo</Text>
+                        </Pressable>
+                      )}
+                      {item.status === 'confirmed' && (
+                        <Pressable style={[styles.btn, styles.return]} onPress={() => updateStatus(item.id as string, 'completed')}>
+                          <Text style={styles.btnText}>Označi kot vrnjeno</Text>
+                        </Pressable>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {item.status === 'pending' && (
+                        <>
+                          <Pressable style={[styles.btn, styles.accept]} onPress={() => updateStatus(item.id as string, 'confirmed')}>
+                            <Text style={styles.btnText}>Potrdi</Text>
+                          </Pressable>
+                          <Pressable style={[styles.btn, styles.reject]} onPress={() => updateStatus(item.id as string, 'rejected')}>
+                            <Text style={styles.btnText}>Zavrni</Text>
+                          </Pressable>
+                        </>
+                      )}
+                      {item.status === 'confirmed' && (
+                        <Pressable style={[styles.btn, styles.return]} onPress={() => updateStatus(item.id as string, 'completed')}>
+                          <Text style={styles.btnText}>Označi kot vrnjeno</Text>
+                        </Pressable>
+                      )}
+                    </>
+                  )}
+                </View>
+              </View>
+            )}
+            ListEmptyComponent={() => <Text style={styles.empty}>Ni izposoj.</Text>}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -68,14 +147,15 @@ const styles = StyleSheet.create({
   card: { backgroundColor: Colors.white, borderRadius: Radius.md, padding: Spacing.md, marginTop: Spacing.sm, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 16, fontWeight: '700', color: Colors.black },
-  meta: { fontSize: 12, color: Colors.grayDark },
-  actions: { flexDirection: 'row', gap: 8, marginTop: Spacing.sm },
+  meta: { fontSize: 12, color: Colors.grayDark, marginTop: 4 },
+  actions: { flexDirection: 'row', gap: 8, marginTop: Spacing.sm, flexWrap: 'wrap' },
   btn: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: Radius.md },
   btnText: { color: Colors.black, fontWeight: '700' },
   cancel: { backgroundColor: Colors.grayLight },
   accept: { backgroundColor: Colors.teal },
   reject: { backgroundColor: Colors.danger },
   return: { backgroundColor: Colors.primaryLight },
+  chat: { backgroundColor: Colors.grayLight },
   empty: { color: Colors.grayDark, marginTop: Spacing.md },
 });
 

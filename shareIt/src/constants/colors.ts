@@ -1,3 +1,5 @@
+import { Dimensions } from 'react-native';
+
 export const Colors = {
   // Primary
   primary: '#F3D527',
@@ -21,6 +23,7 @@ export const Spacing = {
   md: 14,
   lg: 18,
   xl: 24,
+  screenWidth: Dimensions.get('window').width,
 } as const;
 
 export const Radius = {

@@ -1,71 +1,106 @@
 import React from 'react';
-import { View, Text, Modal, Pressable, StyleSheet, FlatList } from 'react-native';
+import { View, Text, Modal, Pressable, StyleSheet, FlatList, TextInput } from 'react-native';
 import { Colors, Radius, Spacing } from '@src/constants/colors';
+
+type CategoryOption = { key: string; label: string };
 
 type Props = {
   visible: boolean;
-  categories: string[];
+  categories: CategoryOption[];
   selectedCategory?: string;
   onSelectCategory: (c?: string) => void;
   priceMin?: string;
   priceMax?: string;
   onChangePriceMin: (v: string) => void;
   onChangePriceMax: (v: string) => void;
-  distanceStep: number; // e.g., 1, 5, 10
-  onIncreaseDistance: () => void;
-  onDecreaseDistance: () => void;
+  distance: number;
+  onChangeDistance: (v: number) => void;
   onReset: () => void;
   onApply: () => void;
   onClose: () => void;
 };
 
-export const FilterModal: React.FC<Props> = ({ visible, categories, selectedCategory, onSelectCategory, priceMin, priceMax, onChangePriceMin, onChangePriceMax, distanceStep, onIncreaseDistance, onDecreaseDistance, onReset, onApply, onClose }) => {
+export const FilterModal: React.FC<Props> = ({
+  visible,
+  categories,
+  selectedCategory,
+  onSelectCategory,
+  priceMin,
+  priceMax,
+  onChangePriceMin,
+  onChangePriceMax,
+  distance,
+  onChangeDistance,
+  onReset,
+  onApply,
+  onClose,
+}) => {
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>Filters</Text>
+          <Text style={styles.title}>Filtri</Text>
 
-          <Text style={styles.section}>Category</Text>
+          <Text style={styles.section}>Kategorija</Text>
           <FlatList
             data={categories}
-            keyExtractor={(c) => c}
+            keyExtractor={(c) => c.key}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 8 }}
             renderItem={({ item }) => {
-              const active = item === selectedCategory;
+              const active = item.key === selectedCategory;
               return (
-                <Pressable onPress={() => onSelectCategory(active ? undefined : item)} style={[styles.chip, active && styles.chipActive]}>
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{item}</Text>
+                <Pressable onPress={() => onSelectCategory(active ? undefined : item.key)} style={[styles.chip, active && styles.chipActive]}>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{item.label}</Text>
                 </Pressable>
               );
             }}
           />
 
-          <Text style={styles.section}>Price range (€)</Text>
+          <Text style={styles.section}>Cenovni razpon (EUR)</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Pressable style={styles.inputLike}>
-              <Text style={styles.inputText} onPress={() => {}}>{priceMin || 'Min'}</Text>
-            </Pressable>
-            <Pressable style={styles.inputLike}>
-              <Text style={styles.inputText} onPress={() => {}}>{priceMax || 'Max'}</Text>
-            </Pressable>
+            <TextInput
+              style={styles.inputLike}
+              placeholder="Min"
+              placeholderTextColor={Colors.gray}
+              keyboardType="numeric"
+              value={priceMin}
+              onChangeText={onChangePriceMin}
+            />
+            <TextInput
+              style={styles.inputLike}
+              placeholder="Max"
+              placeholderTextColor={Colors.gray}
+              keyboardType="numeric"
+              value={priceMax}
+              onChangeText={onChangePriceMax}
+            />
           </View>
 
-          <Text style={styles.section}>Distance</Text>
+          <Text style={styles.section}>Razdalja</Text>
           <View style={styles.rowCenter}>
-            <Pressable style={[styles.pill, styles.muted]} onPress={onDecreaseDistance}><Text style={styles.pillText}>-</Text></Pressable>
-            <Text style={styles.distText}>{distanceStep} km</Text>
-            <Pressable style={styles.pill} onPress={onIncreaseDistance}><Text style={styles.pillText}>+</Text></Pressable>
+            <Pressable
+              style={[styles.pill, styles.muted]}
+              onPress={() => onChangeDistance(Math.max(1, distance - 5))}
+            >
+              <Text style={styles.pillText}>-</Text>
+            </Pressable>
+            <Text style={styles.distText}>{distance} km</Text>
+            <Pressable
+              style={styles.pill}
+              onPress={() => onChangeDistance(Math.min(200, distance + 5))}
+            >
+              <Text style={styles.pillText}>+</Text>
+            </Pressable>
           </View>
 
           <View style={styles.actions}>
-            <Pressable style={[styles.btn, styles.reset]} onPress={onReset}><Text style={styles.btnText}>Reset</Text></Pressable>
-            <Pressable style={[styles.btn, styles.apply]} onPress={onApply}><Text style={[styles.btnText, styles.applyText]}>Apply</Text></Pressable>
+            <Pressable style={[styles.btn, styles.reset]} onPress={onReset}><Text style={styles.btnText}>Ponastavi</Text></Pressable>
+            <Pressable style={[styles.btn, styles.apply]} onPress={onApply}><Text style={[styles.btnText, styles.applyText]}>Uporabi</Text></Pressable>
           </View>
 
-          <Pressable style={styles.close} onPress={onClose}><Text style={styles.closeText}>Close</Text></Pressable>
+          <Pressable style={styles.close} onPress={onClose}><Text style={styles.closeText}>Zapri</Text></Pressable>
         </View>
       </View>
     </Modal>
@@ -81,8 +116,15 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: Colors.primaryLight },
   chipText: { color: Colors.grayDark },
   chipTextActive: { color: Colors.black, fontWeight: '700' },
-  inputLike: { flex: 1, borderWidth: 1, borderColor: Colors.gray, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
-  inputText: { color: Colors.black },
+  inputLike: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.gray,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    color: Colors.black,
+  },
   rowCenter: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   distText: { fontSize: 14, color: Colors.black },
   pill: { backgroundColor: Colors.primary, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md },
