@@ -42,6 +42,28 @@ service cloud.firestore {
       );
     }
 
+    // Chats: samo udeleženci lahko berejo/pišejo
+    match /chats/{chatId} {
+      allow read: if request.auth != null &&
+        request.auth.uid in resource.data.participants;
+
+      allow create: if request.auth != null &&
+        request.auth.uid in request.resource.data.participants;
+
+      allow update: if request.auth != null &&
+        request.auth.uid in resource.data.participants;
+
+      // Sporočila v chatu
+      match /messages/{messageId} {
+        allow read: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+
+        allow create: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants &&
+          request.resource.data.senderId == request.auth.uid;
+      }
+    }
+
     // Default deny for everything else
     match /{document=**} {
       allow read, write: if false;

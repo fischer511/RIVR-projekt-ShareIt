@@ -1,28 +1,86 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, Alert } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, Radius } from '@src/constants/colors';
-import { bookings } from '@src/constants/mockData';
 import { Booking } from '@src/models';
 import StatusChip from '@src/components/StatusChip';
 import SegmentedTabs from '@src/components/SegmentedTabs';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '@src/services/firebase';
 
 const HistoryScreen: React.FC = () => {
   const [activeStatus, setActiveStatus] = useState<'All' | 'Active' | 'Accepted' | 'Completed'>('All');
   const [role, setRole] = useState<'renter' | 'owner'>('renter');
-  const [state, setState] = useState<Booking[]>(bookings);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = useMemo(() => state.filter((b) => b.role === role).filter((b) => {
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    // Pridobi rezervacije kjer je uporabnik renter ALI owner
+    const q = query(
+      collection(db, 'bookings'),
+      where('userUid', '==', user.uid)
+    );
+
+    const unsubRenter = onSnapshot(q, (snap) => {
+      const renterBookings = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        role: 'renter' as const,
+      })) as Booking[];
+      
+      // Pridobi še rezervacije kjer je uporabnik owner
+      const qOwner = query(
+        collection(db, 'bookings'),
+        where('ownerUid', '==', user.uid)
+      );
+      
+      onSnapshot(qOwner, (snapOwner) => {
+        const ownerBookings = snapOwner.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+          role: 'owner' as const,
+        })) as Booking[];
+        
+        setBookings([...renterBookings, ...ownerBookings]);
+        setLoading(false);
+      });
+    });
+
+    return () => unsubRenter();
+  }, []);
+
+  const filtered = useMemo(() => bookings.filter((b) => b.role === role).filter((b) => {
     if (activeStatus === 'All') return true;
     if (activeStatus === 'Active') return b.status === 'Pending' || b.status === 'Accepted';
     if (activeStatus === 'Accepted') return b.status === 'Accepted';
     return (b.status as any) === 'Completed';
   }), [state, role, activeStatus]);
 
-  const updateStatus = (id: string, status: Booking['status']) => {
-    setState((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
-    Alert.alert('Status updated (mock)');
+  const updateStatus = async (id: string, status: Booking['status']) => {
+    try {
+      await updateDoc(doc(db, 'bookings', id), { status });
+      Alert.alert('Uspeh', 'Status posodobljen');
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      Alert.alert('Napaka', 'Ni bilo mogoče posodobiti statusa');
+    }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>

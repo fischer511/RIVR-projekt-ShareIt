@@ -1,43 +1,74 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, Alert, ActivityIndicator, Modal, TextInput, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors, Radius, Spacing } from '../constants/colors';
 import { Item } from '../models/Item';
-import { getItemById, getUserProfile } from '../services/items';
+import { getItemById } from '../services/items';
+import { getOrCreateChatRoom } from '../services/chat';
+import { auth } from '../services/firebase';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
-import { User } from '../models/User';
+
 
 const ItemDetailsScreen: React.FC = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   
   const [item, setItem] = useState<Item | null>(null);
-  const [owner, setOwner] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [firstMessage, setFirstMessage] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (id) {
-      const fetchItemAndOwner = async () => {
+      const fetchItem = async () => {
         setLoading(true);
         try {
           const fetchedItem = await getItemById(id);
           setItem(fetchedItem);
-
-          if (fetchedItem?.ownerUid) {
-            const fetchedOwner = await getUserProfile(fetchedItem.ownerUid);
-            setOwner(fetchedOwner as User);
-          }
         } catch (error) {
           console.error("Error fetching item details:", error);
         } finally {
           setLoading(false);
         }
       };
-      fetchItemAndOwner();
+      fetchItem();
     }
   }, [id]);
+
+  const handleContactOwner = async () => {
+    if (!auth.currentUser) {
+      Alert.alert('Prijava potrebna', 'Za pošiljanje sporočil se morate prijaviti.');
+      return;
+    }
+    if (!item || !item.ownerUid) {
+      Alert.alert('Napaka', 'Ni mogoče odpreti pogovora.');
+      return;
+    }
+    if (auth.currentUser.uid === item.ownerUid) {
+      Alert.alert('Opozorilo', 'To je vaš predmet.');
+      return;
+    }
+    setShowMessageModal(true);
+  };
+
+  const handleSendFirstMessage = async () => {
+    if (!firstMessage.trim()) return;
+    setSending(true);
+    try {
+      const chatId = await getOrCreateChatRoom(item!.id, item!.title, item!.ownerUid);
+      await import('../services/chat').then(mod => mod.sendMessage(chatId, firstMessage));
+      setShowMessageModal(false);
+      setFirstMessage('');
+      router.push(`/chat/${chatId}`);
+    } catch (error) {
+      Alert.alert('Napaka', 'Ni mogoče odpreti pogovora.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -83,13 +114,15 @@ const ItemDetailsScreen: React.FC = () => {
           
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Status</Text>
-            <Text style={styles.status}>{item.status.charAt(0).toUpperCase() + item.status.slice(1)}</Text>
+            {/* <Text style={styles.status}>{item.status.charAt(0).toUpperCase() + item.status.slice(1)}</Text> */}
           </View>
           
+          {/*
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Owner</Text>
-            <Text style={styles.owner}>{owner ? owner.email : 'Loading...'}</Text>
+            <Text style={styles.owner}>Lastnik</Text>
           </View>
+          */}
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Description</Text>
@@ -98,9 +131,38 @@ const ItemDetailsScreen: React.FC = () => {
         </View>
 
         <View style={styles.actions}>
-          <PrimaryButton title="Request booking" onPress={() => router.push(`/request/${id}`)} />
-          <SecondaryButton title="Message owner" onPress={() => Alert.alert('Message', 'This would open chat (mock).')} />
+          <PrimaryButton title="Rezerviraj" onPress={() => router.push(`/request/${id}`)} />
+          <SecondaryButton 
+            title="Kontaktiraj lastnika" 
+            onPress={handleContactOwner}
+          />
         </View>
+        <Modal
+          visible={showMessageModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowMessageModal(false)}
+        >
+          <View style={{ flex:1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent:'center', alignItems:'center' }}>
+            <View style={{ backgroundColor:'#fff', padding:24, borderRadius:12, width:'85%' }}>
+              <Text style={{ fontWeight:'bold', fontSize:16, marginBottom:8 }}>Začni pogovor</Text>
+              <TextInput
+                placeholder="Napišite prvo sporočilo..."
+                value={firstMessage}
+                onChangeText={setFirstMessage}
+                style={{ borderWidth:1, borderColor:'#ccc', borderRadius:8, padding:8, minHeight:40, marginBottom:12 }}
+                multiline
+                autoFocus
+              />
+              <View style={{ flexDirection:'row', justifyContent:'flex-end', gap:12 }}>
+                <Pressable onPress={() => setShowMessageModal(false)} style={{ padding:8 }}><Text>Prekliči</Text></Pressable>
+                <Pressable onPress={handleSendFirstMessage} style={{ padding:8 }} disabled={sending || !firstMessage.trim()}>
+                  <Text style={{ color: sending || !firstMessage.trim() ? '#aaa' : Colors.primary, fontWeight:'bold' }}>Pošlji</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -112,7 +174,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   empty: { color: Colors.grayDark },
   carousel: { height: 240, borderBottomWidth: 1, borderBottomColor: Colors.grayLight },
-  image: { width: Spacing.screenWidth, height: 240, backgroundColor: Colors.grayLight },
+  image: { width: '100%', height: 240, backgroundColor: Colors.grayLight },
   imagePlaceholder: { height: 240, backgroundColor: Colors.grayLight, borderBottomWidth: 1, borderBottomColor: Colors.grayLight },
   info: { padding: Spacing.md, gap: Spacing.md, flex: 1 },
   title: { fontSize: 22, fontWeight: '700', color: Colors.black },

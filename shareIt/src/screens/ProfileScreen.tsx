@@ -5,7 +5,7 @@ import { Colors, Spacing, Radius } from '@src/constants/colors';
 import PrimaryButton from '@src/components/PrimaryButton';
 import SecondaryButton from '@src/components/SecondaryButton';
 import { useRouter } from 'expo-router';
-import { signOut, onAuthStateChanged, signInWithEmailAndPassword, User, sendEmailVerification, sendPasswordResetEmail, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signOut, onAuthStateChanged, User, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@src/services/firebase';
 
 const ProfileScreen: React.FC = () => {
@@ -59,57 +59,14 @@ const ProfileScreen: React.FC = () => {
           </View>
         ) : (
           <View style={styles.card}>
+            <Text style={styles.meta}>Niste prijavljeni</Text>
             <PrimaryButton
-              title="Login test user"
-              onPress={async () => {
-                try {
-                  const cred = await signInWithEmailAndPassword(auth, 'testuser1@test.com', 'test123456');
-                  console.log('LOGIN OK', cred.user?.uid);
-                  Alert.alert('Signed in');
-                } catch (e: any) {
-                  console.error(e?.message ?? e);
-                  Alert.alert('Login failed. If user does not exist, register below.');
-                }
-              }}
-            />
-            <PrimaryButton
-              title="Login test user 2"
-              onPress={async () => {
-                try {
-                  const cred = await signInWithEmailAndPassword(auth, 'testuser2@test.com', 'test123456');
-                  console.log('LOGIN2 OK', cred.user?.uid);
-                  Alert.alert('Signed in');
-                } catch (e: any) {
-                  console.error(e?.message ?? e);
-                  Alert.alert('Login failed. If user does not exist, register below.');
-                }
-              }}
+              title="Prijava"
+              onPress={() => router.push('/login')}
             />
             <SecondaryButton
-              title="Register test user"
-              onPress={async () => {
-                try {
-                  const cred = await createUserWithEmailAndPassword(auth, 'testuser1@test.com', 'test123456');
-                  console.log('REGISTER OK', cred.user?.uid);
-                  Alert.alert('User registered. Verification email available after login.');
-                } catch (e: any) {
-                  console.error(e?.message ?? e);
-                  Alert.alert(String(e?.code ?? 'auth/error'));
-                }
-              }}
-            />
-            <SecondaryButton
-              title="Register test user 2"
-              onPress={async () => {
-                try {
-                  const cred = await createUserWithEmailAndPassword(auth, 'testuser2@test.com', 'test123456');
-                  console.log('REGISTER2 OK', cred.user?.uid);
-                  Alert.alert('User registered. Verification email available after login.');
-                } catch (e: any) {
-                  console.error(e?.message ?? e);
-                  Alert.alert(String(e?.code ?? 'auth/error'));
-                }
-              }}
+              title="Registracija"
+              onPress={() => router.push('/registration')}
             />
           </View>
         )}
@@ -180,6 +137,11 @@ const ProfileScreen: React.FC = () => {
             />
           </View>
         )}
+        {user ? (
+          <View style={styles.card}>
+            <PrimaryButton title="Moji pogovori" onPress={() => router.push('/chats')} />
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
