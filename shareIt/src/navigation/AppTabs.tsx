@@ -10,6 +10,7 @@ const AppTabs: React.FC = () => {
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.grayDark,
+        tabBarShowLabel: true,
       }}
     >
       <Tabs.Screen 

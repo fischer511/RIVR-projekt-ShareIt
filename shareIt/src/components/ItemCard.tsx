@@ -9,7 +9,7 @@ type Props = {
   pricePerDay: number;
   distanceKm?: number;
   city: string;
-  imageUrl: string;
+  imageUrl?: string;
   ratingAvg?: number;
   ratingCount?: number;
   onPress?: () => void;
@@ -19,7 +19,11 @@ export const ItemCard: React.FC<Props> = ({ id, title, pricePerDay, distanceKm, 
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.imageWrap}>
-        <Image source={{ uri: imageUrl }} style={styles.image} />
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.image} />
+        ) : (
+          <View style={styles.imagePlaceholder} />
+        )}
         <FavoriteButton itemId={id} style={styles.favoriteBtn} />
       </View>
       <View style={styles.info}>
@@ -52,6 +56,7 @@ const styles = StyleSheet.create({
   },
   imageWrap: { height: 170, backgroundColor: Colors.grayLight, position: 'relative' },
   image: { width: '100%', height: '100%' },
+  imagePlaceholder: { width: '100%', height: '100%', backgroundColor: Colors.grayLight },
   favoriteBtn: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: 20 },
   info: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, gap: 6 },
   title: { fontSize: 16, fontWeight: '700', color: Colors.black },

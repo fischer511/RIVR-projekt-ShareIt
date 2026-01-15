@@ -17,7 +17,8 @@ export type NewItemInput = {
 export async function createItem(input: NewItemInput) {
   const user = auth.currentUser;
   if (!user) throw new Error('auth/not-signed-in');
-  if (!user.emailVerified) throw new Error('auth/email-not-verified');
+  // Email verification disabled for school project
+  // if (!user.emailVerified) throw new Error('auth/email-not-verified');
 
   const payload = {
     ownerUid: user.uid,

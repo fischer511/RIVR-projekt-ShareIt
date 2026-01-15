@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, SafeAreaView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { registerUser } from '../../src/services/auth';
 import PrimaryButton from '../../src/components/PrimaryButton';
