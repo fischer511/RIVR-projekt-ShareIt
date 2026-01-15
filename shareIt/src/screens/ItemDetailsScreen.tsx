@@ -10,6 +10,41 @@ import { auth } from '../services/firebase';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 
+// Helpers for simple availability calendar
+function parseYMD(ymd?: string) {
+  if (!ymd) return null;
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function formatDateShort(ymd: string) {
+  const d = parseYMD(ymd);
+  if (!d) return ymd;
+  return d.getDate().toString();
+}
+
+function formatDateMonth(ymd: string) {
+  const d = parseYMD(ymd);
+  if (!d) return '';
+  return d.toLocaleString('default', { month: 'short' });
+}
+
+function getDatesBetween(from?: string, to?: string) {
+  const start = parseYMD(from);
+  const end = parseYMD(to);
+  if (!start || !end || start > end) return [];
+  const dates: string[] = [];
+  const cur = new Date(start);
+  while (cur <= end) {
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, '0');
+    const d = String(cur.getDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${d}`);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
 
 const ItemDetailsScreen: React.FC = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,7 +62,8 @@ const ItemDetailsScreen: React.FC = () => {
         setLoading(true);
         try {
           const fetchedItem = await getItemById(id);
-          setItem(fetchedItem);
+            console.log('[ItemDetails] fetched item id=', id, ' photos=', (fetchedItem as any)?.photos?.slice?.(0,3));
+            setItem(fetchedItem);
         } catch (error) {
           console.error("Error fetching item details:", error);
         } finally {
@@ -93,10 +129,10 @@ const ItemDetailsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        {item.images && item.images.length > 0 ? (
+        {((item as any).photos && (item as any).photos.length) ? (
           <FlatList
-            data={item.images}
-            keyExtractor={(url, idx) => `${url}-${idx}`}
+            data={(item as any).photos}
+            keyExtractor={(url: string, idx: number) => `${url}-${idx}`}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
@@ -128,6 +164,25 @@ const ItemDetailsScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>Description</Text>
             <Text style={styles.desc}>{item.description}</Text>
           </View>
+
+          {item.availability && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Razpoložljivi dnevi</Text>
+              <FlatList
+                data={getDatesBetween(item.availability.fromDate, item.availability.toDate)}
+                horizontal
+                keyExtractor={(d) => d}
+                showsHorizontalScrollIndicator={false}
+                renderItem={({ item: d }) => (
+                  <View style={styles.dateChip}>
+                    <Text style={styles.dateChipDay}>{formatDateShort(d)}</Text>
+                    <Text style={styles.dateChipMonth}>{formatDateMonth(d)}</Text>
+                  </View>
+                )}
+                style={{ marginTop: 8 }}
+              />
+            </View>
+          )}
         </View>
 
         <View style={styles.actions}>
@@ -187,6 +242,9 @@ const styles = StyleSheet.create({
   desc: { fontSize: 15, color: Colors.black, lineHeight: 22 },
 
   actions: { padding: Spacing.md, gap: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.grayLight },
+  dateChip: { backgroundColor: Colors.grayLight, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, marginRight: 8, alignItems: 'center' },
+  dateChipDay: { fontSize: 16, fontWeight: '700', color: Colors.black },
+  dateChipMonth: { fontSize: 12, color: Colors.grayDark },
 });
 
 export default ItemDetailsScreen;

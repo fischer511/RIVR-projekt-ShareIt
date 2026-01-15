@@ -7,7 +7,7 @@ type Props = {
   pricePerDay: number;
   distanceKm: number;
   city: string;
-  imageUrl: string;
+  imageUrl?: string;
   onPress?: () => void;
 };
 
@@ -15,7 +15,11 @@ export const ItemCard: React.FC<Props> = ({ title, pricePerDay, distanceKm, city
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.imageWrap}>
-        <Image source={{ uri: imageUrl }} style={styles.image} />
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.image} />
+        ) : (
+          <View style={styles.imagePlaceholder} />
+        )}
       </View>
       <View style={styles.info}>
         <Text style={styles.title}>{title}</Text>
@@ -42,6 +46,7 @@ const styles = StyleSheet.create({
   },
   imageWrap: { height: 170, backgroundColor: Colors.grayLight },
   image: { width: '100%', height: '100%' },
+  imagePlaceholder: { width: '100%', height: '100%', backgroundColor: Colors.grayLight },
   info: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, gap: 6 },
   title: { fontSize: 16, fontWeight: '700', color: Colors.black },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

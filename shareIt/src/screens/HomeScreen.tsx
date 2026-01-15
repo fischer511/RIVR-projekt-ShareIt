@@ -32,6 +32,8 @@ const HomeScreen: React.FC = () => {
 
       const category = activeCategory === 'all' ? undefined : activeCategory;
       const fetchedItems = await queryItems({ category });
+      console.log('[HomeScreen] fetchedItems count=', fetchedItems.length);
+      console.log('[HomeScreen] sample item photos=', (fetchedItems[0] as any)?.photos?.slice?.(0,2));
       setItems(fetchedItems);
     } catch (error) {
       console.error("Error initializing screen:", error);
@@ -115,7 +117,7 @@ const HomeScreen: React.FC = () => {
                 pricePerDay={item.pricePerDay}
                 distanceKm={item.distanceKm}
                 city={item.city}
-                imageUrl={item.images[0]}
+                imageUrl={(item as any).photos && (item as any).photos.length ? (item as any).photos[0] : undefined}
                 onPress={() => router.push(`/item/${item.id}`)}
               />
             )}
