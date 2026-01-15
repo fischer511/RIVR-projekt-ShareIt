@@ -127,7 +127,10 @@ const AddItemScreen: React.FC = () => {
     setLoading(true);
     try {
       // Pretvori slike v Base64 (kompresija za manjšo velikost)
+      console.log('[AddItem] local image URIs =', images);
       const photoUrls = await imagesToBase64(images);
+      console.log('[AddItem] converted photoUrls count=', photoUrls.length);
+      if (photoUrls.length) console.log('[AddItem] sample photo length=', (photoUrls[0] || '').length);
 
       // Ustvari predmet v Firestore
       const id = await createItem({
@@ -136,6 +139,7 @@ const AddItemScreen: React.FC = () => {
         category: category as Category,
         pricePerDay: Number(price),
         photos: photoUrls,
+        images: photoUrls, // ensure images written too
         availabilityFrom: fromDate ? fromDate.toISOString().split('T')[0] : undefined,
         availabilityTo: toDate ? toDate.toISOString().split('T')[0] : undefined,
         city: city || undefined,
