@@ -18,21 +18,25 @@ const BookingsTabsScreen: React.FC = () => {
   const fetchData = useCallback(async () => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
+      console.log('No current user');
       setLoading(false);
       return;
     }
 
     try {
+      console.log('Fetching bookings for user:', currentUser.uid);
       setLoading(true);
       await autoCancelExpiredBookings({ renterUid: currentUser.uid, ownerUid: currentUser.uid });
       const [renterData, ownerData] = await Promise.all([
         getUserBookings(currentUser.uid),
         getOwnerBookingRequests(currentUser.uid),
       ]);
+      console.log('Renter bookings:', renterData.length);
+      console.log('Owner booking requests:', ownerData.length);
       setRenterBookings(renterData);
       setOwnerBookings(ownerData);
     } catch (e: any) {
-      console.error(e?.message ?? e);
+      console.error('Error fetching bookings:', e?.message ?? e);
     } finally {
       setLoading(false);
     }
@@ -81,6 +85,8 @@ const BookingsTabsScreen: React.FC = () => {
 
         {loading ? (
           <Text style={styles.empty}>Nalagam...</Text>
+        ) : filtered.length === 0 ? (
+          <Text style={styles.empty}>Ni izposoj.</Text>
         ) : (
           <FlatList
             data={filtered}

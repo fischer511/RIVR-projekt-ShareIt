@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Image, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Image, Alert, TextInput, ScrollView, useWindowDimensions } from 'react-native';
 import { Colors, Spacing, Radius } from '@src/constants/colors';
 import PrimaryButton from '@src/components/PrimaryButton';
 import SecondaryButton from '@src/components/SecondaryButton';
@@ -10,6 +10,9 @@ import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firest
 
 const ProfileScreen: React.FC = () => {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+  const contentPadding = isLandscape ? Spacing.lg : Spacing.md;
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [resetEmail, setResetEmail] = useState<string>('');
   const [profileName, setProfileName] = useState<string>('');
@@ -51,7 +54,7 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+      <ScrollView contentContainerStyle={[styles.container, { paddingHorizontal: contentPadding, maxWidth: 900, alignSelf: 'center', width: '100%' }]}>
         <View style={styles.center}>
           <Image
             source={{ uri: profilePhotoUrl || 'https://placekitten.com/200/200' }}
@@ -174,56 +177,12 @@ const ProfileScreen: React.FC = () => {
         ) : (
           <View style={styles.card}>
             <PrimaryButton
-              title="Prijava testnega uporabnika"
-              onPress={async () => {
-                try {
-                  const cred = await signInWithEmailAndPassword(auth, 'testuser1@test.com', 'test123456');
-                  console.log('LOGIN OK', cred.user?.uid);
-                  Alert.alert('Prijavljen/a');
-                } catch (e: any) {
-                  console.error(e?.message ?? e);
-                  Alert.alert('Prijava ni uspela. Če račun ne obstaja, ga registriraj spodaj.');
-                }
-              }}
-            />
-            <PrimaryButton
-              title="Prijava testnega uporabnika 2"
-              onPress={async () => {
-                try {
-                  const cred = await signInWithEmailAndPassword(auth, 'testuser2@test.com', 'test123456');
-                  console.log('LOGIN2 OK', cred.user?.uid);
-                  Alert.alert('Prijavljen/a');
-                } catch (e: any) {
-                  console.error(e?.message ?? e);
-                  Alert.alert('Prijava ni uspela. Če račun ne obstaja, ga registriraj spodaj.');
-                }
-              }}
+              title="Prijava"
+              onPress={() => router.push('/login')}
             />
             <SecondaryButton
-              title="Registriraj testnega uporabnika"
-              onPress={async () => {
-                try {
-                  const cred = await createUserWithEmailAndPassword(auth, 'testuser1@test.com', 'test123456');
-                  console.log('REGISTER OK', cred.user?.uid);
-                  Alert.alert('Uporabnik registriran. Verifikacija e-maila po prijavi.');
-                } catch (e: any) {
-                  console.error(e?.message ?? e);
-                  Alert.alert(String(e?.code ?? 'auth/error'));
-                }
-              }}
-            />
-            <SecondaryButton
-              title="Registriraj testnega uporabnika 2"
-              onPress={async () => {
-                try {
-                  const cred = await createUserWithEmailAndPassword(auth, 'testuser2@test.com', 'test123456');
-                  console.log('REGISTER2 OK', cred.user?.uid);
-                  Alert.alert('Uporabnik registriran. Verifikacija e-maila po prijavi.');
-                } catch (e: any) {
-                  console.error(e?.message ?? e);
-                  Alert.alert(String(e?.code ?? 'auth/error'));
-                }
-              }}
+              title="Registracija"
+              onPress={() => router.push('/registration')}
             />
           </View>
         )}
@@ -331,14 +290,14 @@ const ProfileScreen: React.FC = () => {
             />
           </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.white },
-  container: { flex: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.md, gap: Spacing.md },
+  container: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing.lg, gap: Spacing.md },
   center: { alignItems: 'center', gap: 8 },
   avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.grayLight },
   name: { fontSize: 18, fontWeight: '700', color: Colors.black },

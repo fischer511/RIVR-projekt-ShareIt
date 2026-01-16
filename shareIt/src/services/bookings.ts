@@ -78,22 +78,34 @@ export async function updateBookingStatus(bookingId: string, status: Booking['st
 }
 
 export async function autoCancelExpiredBookings(filters: { renterUid?: string; ownerUid?: string }) {
-  const now = Timestamp.fromDate(new Date());
-  const bookingsRef = collection(db, 'bookings');
+  try {
+    const now = Timestamp.fromDate(new Date());
+    const bookingsRef = collection(db, 'bookings');
 
-  const queries = [];
-  if (filters.renterUid) {
-    queries.push(query(bookingsRef, where('renterUid', '==', filters.renterUid), where('status', '==', 'pending'), where('expiresAt', '<=', now)));
-  }
-  if (filters.ownerUid) {
-    queries.push(query(bookingsRef, where('ownerUid', '==', filters.ownerUid), where('status', '==', 'pending'), where('expiresAt', '<=', now)));
-  }
-
-  for (const q of queries) {
-    const snap = await getDocs(q);
-    for (const docSnap of snap.docs) {
-      await updateDoc(doc(db, 'bookings', docSnap.id), { status: 'cancelled' });
+    // Query pending bookings only (can't use 3 where clauses without composite index)
+    // So we filter expireAt in code
+    const queries = [];
+    if (filters.renterUid) {
+      queries.push(query(bookingsRef, where('renterUid', '==', filters.renterUid), where('status', '==', 'pending')));
     }
+    if (filters.ownerUid) {
+      queries.push(query(bookingsRef, where('ownerUid', '==', filters.ownerUid), where('status', '==', 'pending')));
+    }
+
+    for (const q of queries) {
+      const snap = await getDocs(q);
+      for (const docSnap of snap.docs) {
+        const booking = docSnap.data() as Booking;
+        // Filter expireAt in code (no composite index needed)
+        if (booking.expiresAt && booking.expiresAt.toMillis?.() <= now.toMillis?.()) {
+          console.log('Auto-cancelling expired booking:', docSnap.id);
+          await updateDoc(doc(db, 'bookings', docSnap.id), { status: 'cancelled' });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error in autoCancelExpiredBookings:', error);
+    // Don't throw - this is a background task
   }
 }
 
@@ -145,14 +157,22 @@ export async function getUserBookings(userId: string): Promise<Booking[]> {
  */
 export async function getOwnerBookingRequests(ownerId: string): Promise<Booking[]> {
   try {
+    console.log('Fetching booking requests for owner:', ownerId);
     const bookingsRef = collection(db, 'bookings');
     const q = query(bookingsRef, where('ownerUid', '==', ownerId));
     const snapshot = await getDocs(q);
     
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    } as Booking));
+    console.log('Found', snapshot.docs.length, 'booking requests for owner', ownerId);
+    
+    const bookings = snapshot.docs.map(doc => {
+      console.log('Booking:', doc.id, doc.data());
+      return {
+        id: doc.id,
+        ...doc.data(),
+      } as Booking;
+    });
+    
+    return bookings;
   } catch (error) {
     console.error('Error fetching owner booking requests:', error);
     throw error;
