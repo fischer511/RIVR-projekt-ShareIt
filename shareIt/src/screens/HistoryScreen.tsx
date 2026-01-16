@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, Pressable, Alert } from 'react-native';
-import { Colors, Spacing, Radius } from '@src/constants/colors';
-import { bookings } from '@src/constants/mockData';
-import { Booking } from '@src/models';
-import StatusChip from '@src/components/StatusChip';
-import SegmentedTabs from '@src/components/SegmentedTabs';
+import { Colors, Spacing, Radius } from '../constants/colors';
+import { bookings } from '../constants/mockData';
+import { Booking } from '../models';
+import StatusChip from '../components/StatusChip';
+import SegmentedTabs from '../components/SegmentedTabs';
 
 const HistoryScreen: React.FC = () => {
   const [activeStatus, setActiveStatus] = useState<'All' | 'Active' | 'Accepted' | 'Completed'>('All');

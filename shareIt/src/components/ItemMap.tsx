@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
+import Constants from 'expo-constants';
 
 type Props = {
   lat: number;
@@ -52,30 +53,47 @@ const ItemMap: React.FC<Props> = ({ lat, lng, height = 200, radiusMeters = 1000 
   }
 
   // Native (Android/iOS)
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const MapView = require('react-native-maps').default;
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { Marker, Circle } = require('react-native-maps');
+  // Native (Android/iOS)
+  // Avoid requiring `react-native-maps` when running inside Expo Go because the native
+  // module won't be present and requiring it will throw a TurboModule error.
+  const isExpoGo = Constants?.appOwnership === 'expo';
+  if (Platform.OS !== 'web' && !isExpoGo) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const RNMaps = require('react-native-maps');
+      const MapView = RNMaps?.default ?? RNMaps;
+      const { Marker: RNMarker, Circle: RNCircle } = RNMaps || {};
 
-  return (
-    <MapView
-      style={[styles.nativeMap, { height }]}
-      initialRegion={{
-        latitude: lat,
-        longitude: lng,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-      }}
-    >
-      <Marker coordinate={{ latitude: lat, longitude: lng }} />
-      <Circle
-        center={{ latitude: lat, longitude: lng }}
-        radius={radiusMeters}
-        strokeColor="#ef4444"
-        fillColor="rgba(239,68,68,0.2)"
-      />
-    </MapView>
-  );
+      if (!MapView) throw new Error('react-native-maps not available');
+
+      return (
+        <MapView
+          style={[styles.nativeMap, { height }]}
+          initialRegion={{
+            latitude: lat,
+            longitude: lng,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          }}
+        >
+          {RNMarker && <RNMarker coordinate={{ latitude: lat, longitude: lng }} />}
+          {RNCircle && (
+            <RNCircle
+              center={{ latitude: lat, longitude: lng }}
+              radius={radiusMeters}
+              strokeColor="#ef4444"
+              fillColor="rgba(239,68,68,0.2)"
+            />
+          )}
+        </MapView>
+      );
+    } catch (err) {
+      return <View style={[styles.webWrap, { height }]} />;
+    }
+  }
+
+  // If we're on web or inside Expo Go, render a non-native placeholder (web handled above).
+  return <View style={[styles.webWrap, { height }]} />;
 };
 
 const styles = StyleSheet.create({
